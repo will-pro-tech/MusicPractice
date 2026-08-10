@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { query } from "./db";
+import { requireParent } from "./auth";
 
 export const servicesRouter = Router();
 
@@ -23,12 +24,9 @@ interface ServiceRow {
   createdAt: string;
 }
 
-// Returns the ordered songs of a service, joined to the live repertoire so we
-// get current tags, but falling back to the stored title snapshot.
 async function songsForService(serviceId: string) {
   return query(
-    `SELECT ss.id,
-            ss.song_id AS "songId",
+    `SELECT ss.id, ss.song_id AS "songId",
             COALESCE(s.title, ss.title) AS title,
             COALESCE(s.tags, '[]'::jsonb) AS tags
      FROM mp_service_songs ss
@@ -39,17 +37,18 @@ async function songsForService(serviceId: string) {
   );
 }
 
-// Replace the full ordered set of songs for a service.
-async function setSongs(serviceId: string, songIds: unknown) {
+// Replace the ordered set of songs for a service (song ids scoped to family).
+async function setSongs(serviceId: string, familyId: string, songIds: unknown) {
   const ids = Array.isArray(songIds) ? songIds.map(String) : [];
   await query(`DELETE FROM mp_service_songs WHERE service_id = $1`, [serviceId]);
-  if (ids.length === 0) return;
+  if (!ids.length) return;
   const titles = await query<{ id: string; title: string }>(
-    `SELECT id, title FROM mp_songs WHERE id = ANY($1::text[])`,
-    [ids],
+    `SELECT id, title FROM mp_songs WHERE family_id = $1 AND id = ANY($2::text[])`,
+    [familyId, ids],
   );
   const titleById = new Map(titles.map((t) => [t.id, t.title]));
   for (let i = 0; i < ids.length; i++) {
+    if (!titleById.has(ids[i])) continue; // ignore ids from another family
     await query(
       `INSERT INTO mp_service_songs (id, service_id, song_id, title, sort_order)
        VALUES ($1, $2, $3, $4, $5)`,
@@ -60,63 +59,83 @@ async function setSongs(serviceId: string, songIds: unknown) {
 
 servicesRouter.get(
   "/services",
-  h(async (_req, res) => {
+  h(async (req, res) => {
     const services = await query<ServiceRow>(
-      `SELECT ${serviceCols} FROM mp_services ORDER BY service_date DESC`,
+      `SELECT ${serviceCols} FROM mp_services WHERE family_id = $1 ORDER BY service_date DESC`,
+      [req.user!.familyId],
     );
     const withSongs = [];
-    for (const s of services) {
-      withSongs.push({ ...s, songs: await songsForService(s.id) });
-    }
+    for (const s of services) withSongs.push({ ...s, songs: await songsForService(s.id) });
     res.json(withSongs);
+  }),
+);
+
+// Songs picked for the relevant Sunday — the next upcoming service, or the most
+// recent one if none is upcoming. Children choose their church song from here.
+servicesRouter.get(
+  "/sunday-songs",
+  h(async (req, res) => {
+    const upcoming = await query<ServiceRow>(
+      `SELECT ${serviceCols} FROM mp_services
+       WHERE family_id = $1 AND service_date >= CURRENT_DATE
+       ORDER BY service_date ASC LIMIT 1`,
+      [req.user!.familyId],
+    );
+    const svc =
+      upcoming[0] ??
+      (
+        await query<ServiceRow>(
+          `SELECT ${serviceCols} FROM mp_services WHERE family_id = $1
+           ORDER BY service_date DESC LIMIT 1`,
+          [req.user!.familyId],
+        )
+      )[0];
+    if (!svc) return void res.json({ service: null, songs: [] });
+    res.json({ service: { date: svc.date, theme: svc.theme }, songs: await songsForService(svc.id) });
   }),
 );
 
 servicesRouter.post(
   "/services",
+  requireParent,
   h(async (req, res) => {
     const { date, theme = "", notes = "", songIds } = req.body ?? {};
-    if (!date) {
-      res.status(400).json({ error: "Service date is required" });
-      return;
-    }
+    if (!date) return void res.status(400).json({ error: "Service date is required" });
     const [service] = await query<ServiceRow>(
-      `INSERT INTO mp_services (id, service_date, theme, notes)
-       VALUES ($1, $2, $3, $4)
-       RETURNING ${serviceCols}`,
-      [randomUUID(), date, String(theme), String(notes)],
+      `INSERT INTO mp_services (id, family_id, service_date, theme, notes)
+       VALUES ($1, $2, $3, $4, $5) RETURNING ${serviceCols}`,
+      [randomUUID(), req.user!.familyId, date, String(theme), String(notes)],
     );
-    await setSongs(service.id, songIds);
+    await setSongs(service.id, req.user!.familyId, songIds);
     res.status(201).json({ ...service, songs: await songsForService(service.id) });
   }),
 );
 
 servicesRouter.patch(
   "/services/:id",
+  requireParent,
   h(async (req, res) => {
     const { date, theme, notes, songIds } = req.body ?? {};
     const [service] = await query<ServiceRow>(
       `UPDATE mp_services SET
-         service_date = COALESCE($2, service_date),
-         theme = COALESCE($3, theme),
-         notes = COALESCE($4, notes)
-       WHERE id = $1
+         service_date = COALESCE($3, service_date),
+         theme = COALESCE($4, theme),
+         notes = COALESCE($5, notes)
+       WHERE id = $1 AND family_id = $2
        RETURNING ${serviceCols}`,
-      [req.params.id, date ?? null, theme ?? null, notes ?? null],
+      [req.params.id, req.user!.familyId, date ?? null, theme ?? null, notes ?? null],
     );
-    if (!service) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
-    if (songIds !== undefined) await setSongs(service.id, songIds);
+    if (!service) return void res.status(404).json({ error: "Not found" });
+    if (songIds !== undefined) await setSongs(service.id, req.user!.familyId, songIds);
     res.json({ ...service, songs: await songsForService(service.id) });
   }),
 );
 
 servicesRouter.delete(
   "/services/:id",
+  requireParent,
   h(async (req, res) => {
-    await query(`DELETE FROM mp_services WHERE id = $1`, [req.params.id]);
+    await query(`DELETE FROM mp_services WHERE id = $1 AND family_id = $2`, [req.params.id, req.user!.familyId]);
     res.status(204).end();
   }),
 );

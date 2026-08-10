@@ -3,11 +3,11 @@ import { randomUUID } from "node:crypto";
 import { query } from "./db";
 import { songsRouter } from "./songs";
 import { servicesRouter } from "./services";
-import { authRouter, requireAppCode } from "./auth";
+import { authRouter, requireAuth, requireParent } from "./auth";
+import { childrenRouter, publicInviteRouter } from "./family";
 
 export const api = Router();
 
-// Small wrapper so async handlers surface errors as clean 500s.
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
   (req: Request, res: Response) => {
@@ -17,81 +17,21 @@ const h =
     });
   };
 
-// --- Public routes (reachable even while the app is locked) ---
-api.get("/healthz", (_req, res) => {
-  res.json({ ok: true });
-});
-api.use(authRouter);
+// --- Public (no session needed) ---
+api.get("/healthz", (_req, res) => res.json({ ok: true }));
+api.use(authRouter); // register / login / logout / me
+api.use(publicInviteRouter); // view + accept an invite
 
-// --- Everything below requires the app access code (when one is set) ---
-api.use(requireAppCode);
+// --- Everything below requires a signed-in user ---
+api.use(requireAuth);
+api.use(childrenRouter); // family children + /me/child
+api.use(songsRouter); // repertoire (family-scoped)
+api.use(servicesRouter); // Sunday services + /sunday-songs
 
-// Repertoire (songs + tags) and Sunday service planning.
-api.use(songsRouter);
-api.use(servicesRouter);
-
-/* ------------------------------- children ------------------------------- */
-
-const childCols = `id, name, instrument, color, sort_order AS "sortOrder", created_at AS "createdAt"`;
-
-api.get(
-  "/children",
-  h(async (_req, res) => {
-    const rows = await query(
-      `SELECT ${childCols} FROM mp_children ORDER BY sort_order, created_at`,
-    );
-    res.json(rows);
-  }),
-);
-
-api.post(
-  "/children",
-  h(async (req, res) => {
-    const { name, instrument = "", color = "teal" } = req.body ?? {};
-    if (!name || !String(name).trim()) {
-      res.status(400).json({ error: "Name is required" });
-      return;
-    }
-    const [row] = await query(
-      `INSERT INTO mp_children (id, name, instrument, color, sort_order)
-       VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM mp_children))
-       RETURNING ${childCols}`,
-      [randomUUID(), String(name).trim(), String(instrument).trim(), String(color)],
-    );
-    res.status(201).json(row);
-  }),
-);
-
-api.patch(
-  "/children/:id",
-  h(async (req, res) => {
-    const { name, instrument, color } = req.body ?? {};
-    const [row] = await query(
-      `UPDATE mp_children SET
-         name = COALESCE($2, name),
-         instrument = COALESCE($3, instrument),
-         color = COALESCE($4, color)
-       WHERE id = $1
-       RETURNING ${childCols}`,
-      [req.params.id, name ?? null, instrument ?? null, color ?? null],
-    );
-    if (!row) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
-    res.json(row);
-  }),
-);
-
-api.delete(
-  "/children/:id",
-  h(async (req, res) => {
-    await query(`DELETE FROM mp_children WHERE id = $1`, [req.params.id]);
-    res.status(204).end();
-  }),
-);
-
-/* ------------------------------- sessions ------------------------------- */
+async function childIdOf(req: Request): Promise<string | null> {
+  const rows = await query<{ id: string }>(`SELECT id FROM mp_children WHERE user_id = $1`, [req.user!.id]);
+  return rows[0]?.id ?? null;
+}
 
 const sessionCols = `
   id,
@@ -110,23 +50,35 @@ const sessionCols = `
   updated_at AS "updatedAt"
 `;
 
+// List sessions. Children see only their own; parents can see any child.
 api.get(
   "/sessions",
   h(async (req, res) => {
-    const { childId, from, to, date } = req.query;
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    const add = (sql: string, value: unknown) => {
-      params.push(value);
-      clauses.push(sql.replace("$?", `$${params.length}`));
-    };
-    if (childId) add("child_id = $?", childId);
-    if (date) add("practice_date = $?", date);
-    if (from) add("practice_date >= $?", from);
-    if (to) add("practice_date <= $?", to);
-    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+    const params: unknown[] = [req.user!.familyId];
+    const clauses = ["family_id = $1"];
+    if (req.user!.role === "child") {
+      const cid = await childIdOf(req);
+      if (!cid) return void res.json([]);
+      params.push(cid);
+      clauses.push(`child_id = $${params.length}`);
+    } else if (req.query.childId) {
+      params.push(req.query.childId);
+      clauses.push(`child_id = $${params.length}`);
+    }
+    if (req.query.date) {
+      params.push(req.query.date);
+      clauses.push(`practice_date = $${params.length}`);
+    }
+    if (req.query.from) {
+      params.push(req.query.from);
+      clauses.push(`practice_date >= $${params.length}`);
+    }
+    if (req.query.to) {
+      params.push(req.query.to);
+      clauses.push(`practice_date <= $${params.length}`);
+    }
     const rows = await query(
-      `SELECT ${sessionCols} FROM mp_sessions ${where}
+      `SELECT ${sessionCols} FROM mp_sessions WHERE ${clauses.join(" AND ")}
        ORDER BY practice_date DESC, practice_time ASC NULLS LAST, created_at DESC`,
       params,
     );
@@ -134,39 +86,27 @@ api.get(
   }),
 );
 
+// Only a child plans their own practice.
 api.post(
   "/sessions",
   h(async (req, res) => {
+    if (req.user!.role !== "child") return void res.status(403).json({ error: "Only children plan practices" });
+    const cid = await childIdOf(req);
+    if (!cid) return void res.status(400).json({ error: "No child profile" });
     const b = req.body ?? {};
-    if (!b.childId) {
-      res.status(400).json({ error: "Please select a child" });
-      return;
-    }
-    if (!b.date) {
-      res.status(400).json({ error: "Practice date is required" });
-      return;
-    }
+    if (!b.date) return void res.status(400).json({ error: "Practice date is required" });
     const [row] = await query(
       `INSERT INTO mp_sessions
-        (id, child_id, practice_date, practice_time,
-         exercises_note, exercises_done,
-         church_song, church_done,
+        (id, family_id, child_id, practice_date, practice_time,
+         exercises_note, exercises_done, church_song, church_done,
          new_song, new_song_goal, new_song_goal_met, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING ${sessionCols}`,
       [
-        randomUUID(),
-        b.childId,
-        b.date,
-        b.time || null,
-        b.exercisesNote ?? "",
-        !!b.exercisesDone,
-        b.churchSong ?? "",
-        !!b.churchDone,
-        b.newSong ?? "",
-        b.newSongGoal ?? "",
-        !!b.newSongGoalMet,
-        b.notes ?? "",
+        randomUUID(), req.user!.familyId, cid, b.date, b.time || null,
+        b.exercisesNote ?? "", !!b.exercisesDone,
+        b.churchSong ?? "", !!b.churchDone,
+        b.newSong ?? "", b.newSongGoal ?? "", !!b.newSongGoalMet, b.notes ?? "",
       ],
     );
     res.status(201).json(row);
@@ -176,40 +116,37 @@ api.post(
 api.patch(
   "/sessions/:id",
   h(async (req, res) => {
+    if (req.user!.role !== "child") return void res.status(403).json({ error: "Only the child can edit their practice" });
+    const cid = await childIdOf(req);
     const b = req.body ?? {};
     const [row] = await query(
       `UPDATE mp_sessions SET
-         practice_date = COALESCE($2, practice_date),
-         practice_time = COALESCE($3, practice_time),
-         exercises_note = COALESCE($4, exercises_note),
-         exercises_done = COALESCE($5, exercises_done),
-         church_song = COALESCE($6, church_song),
-         church_done = COALESCE($7, church_done),
-         new_song = COALESCE($8, new_song),
-         new_song_goal = COALESCE($9, new_song_goal),
-         new_song_goal_met = COALESCE($10, new_song_goal_met),
-         notes = COALESCE($11, notes),
+         practice_date = COALESCE($4, practice_date),
+         practice_time = COALESCE($5, practice_time),
+         exercises_note = COALESCE($6, exercises_note),
+         exercises_done = COALESCE($7, exercises_done),
+         church_song = COALESCE($8, church_song),
+         church_done = COALESCE($9, church_done),
+         new_song = COALESCE($10, new_song),
+         new_song_goal = COALESCE($11, new_song_goal),
+         new_song_goal_met = COALESCE($12, new_song_goal_met),
+         notes = COALESCE($13, notes),
          updated_at = now()
-       WHERE id = $1
+       WHERE id = $1 AND family_id = $2 AND child_id = $3
        RETURNING ${sessionCols}`,
       [
-        req.params.id,
-        b.date ?? null,
-        b.time ?? null,
+        req.params.id, req.user!.familyId, cid,
+        b.date ?? null, b.time ?? null,
         b.exercisesNote ?? null,
         typeof b.exercisesDone === "boolean" ? b.exercisesDone : null,
         b.churchSong ?? null,
         typeof b.churchDone === "boolean" ? b.churchDone : null,
-        b.newSong ?? null,
-        b.newSongGoal ?? null,
+        b.newSong ?? null, b.newSongGoal ?? null,
         typeof b.newSongGoalMet === "boolean" ? b.newSongGoalMet : null,
         b.notes ?? null,
       ],
     );
-    if (!row) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
+    if (!row) return void res.status(404).json({ error: "Not found" });
     res.json(row);
   }),
 );
@@ -217,21 +154,25 @@ api.patch(
 api.delete(
   "/sessions/:id",
   h(async (req, res) => {
-    await query(`DELETE FROM mp_sessions WHERE id = $1`, [req.params.id]);
+    if (req.user!.role !== "child") return void res.status(403).json({ error: "Only the child can delete their practice" });
+    const cid = await childIdOf(req);
+    await query(`DELETE FROM mp_sessions WHERE id = $1 AND family_id = $2 AND child_id = $3`, [
+      req.params.id, req.user!.familyId, cid,
+    ]);
     res.status(204).end();
   }),
 );
 
-/* -------------------------------- summary ------------------------------- */
-
-// Parent view: each child with their recent sessions and how many distinct
-// days they practiced in the window. Goals & repertoire, never a time score.
+// Parent overview: each child with recent sessions and days practiced.
 api.get(
   "/summary",
+  requireParent,
   h(async (req, res) => {
     const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 180);
     const children = await query<{ id: string }>(
-      `SELECT ${childCols} FROM mp_children ORDER BY sort_order, created_at`,
+      `SELECT id, name, instrument, color, sort_order AS "sortOrder"
+       FROM mp_children WHERE family_id = $1 ORDER BY sort_order, created_at`,
+      [req.user!.familyId],
     );
     const result = [];
     for (const child of children) {

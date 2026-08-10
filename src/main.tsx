@@ -1,14 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import Gate from "./Gate";
+import { AuthProvider } from "./auth";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Gate>
+    <AuthProvider>
       <App />
-    </Gate>
+    </AuthProvider>
   </StrictMode>,
 );
 

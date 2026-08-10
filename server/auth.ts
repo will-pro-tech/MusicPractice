@@ -1,130 +1,237 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scryptSync, timingSafeEqual, createHmac } from "node:crypto";
 import { query } from "./db";
 
-/* --------------------------- hashing helpers ---------------------------- */
+/* --------------------------- password hashing --------------------------- */
 
-/** Hash a code as "salt:derivedKey", both hex. */
-function hashCode(code: string): string {
+export function hashPassword(pw: string): string {
   const salt = randomBytes(16);
-  const dk = scryptSync(code, salt, 32);
-  return `${salt.toString("hex")}:${dk.toString("hex")}`;
+  return `${salt.toString("hex")}:${scryptSync(pw, salt, 32).toString("hex")}`;
 }
 
-/** Constant-time verification of a code against a stored "salt:hash". */
-export function verifyCode(code: string, stored: string | null): boolean {
+export function verifyPassword(pw: string, stored: string | null): boolean {
   if (!stored) return false;
   const [saltHex, hashHex] = stored.split(":");
   if (!saltHex || !hashHex) return false;
   const expected = Buffer.from(hashHex, "hex");
-  const actual = scryptSync(code, Buffer.from(saltHex, "hex"), expected.length);
+  const actual = scryptSync(pw, Buffer.from(saltHex, "hex"), expected.length);
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
-/* ---------------------------- settings cache ---------------------------- */
+/* --------------------------- session signing ---------------------------- */
 
-interface Settings {
-  appCodeHash: string | null;
-  parentCodeHash: string | null;
-}
+let secretCache: string | null = null;
 
-let cache: Settings | null = null;
-
-export async function getSettings(): Promise<Settings> {
-  if (cache) return cache;
-  const rows = await query<Settings>(
-    `SELECT app_code_hash AS "appCodeHash", parent_code_hash AS "parentCodeHash"
-     FROM mp_settings WHERE id = 'default'`,
+async function getSecret(): Promise<string> {
+  if (secretCache) return secretCache;
+  const rows = await query<{ value: string }>(
+    `SELECT value FROM mp_config WHERE key = 'session_secret'`,
   );
-  cache = rows[0] ?? { appCodeHash: null, parentCodeHash: null };
-  return cache;
+  if (rows[0]) {
+    secretCache = rows[0].value;
+  } else {
+    const value = process.env.SESSION_SECRET || randomBytes(32).toString("hex");
+    await query(
+      `INSERT INTO mp_config (key, value) VALUES ('session_secret', $1)
+       ON CONFLICT (key) DO NOTHING`,
+      [value],
+    );
+    const again = await query<{ value: string }>(
+      `SELECT value FROM mp_config WHERE key = 'session_secret'`,
+    );
+    secretCache = again[0]?.value ?? value;
+  }
+  return secretCache;
 }
 
-async function saveCodes(patch: { appCodeHash?: string; parentCodeHash?: string }) {
-  await query(
-    `INSERT INTO mp_settings (id, app_code_hash, parent_code_hash)
-     VALUES ('default', $1, $2)
-     ON CONFLICT (id) DO UPDATE SET
-       app_code_hash = COALESCE($1, mp_settings.app_code_hash),
-       parent_code_hash = COALESCE($2, mp_settings.parent_code_hash),
-       updated_at = now()`,
-    [patch.appCodeHash ?? null, patch.parentCodeHash ?? null],
+const COOKIE = "mp_session";
+
+async function makeToken(userId: string): Promise<string> {
+  const secret = await getSecret();
+  const sig = createHmac("sha256", secret).update(userId).digest("base64url");
+  return `${Buffer.from(userId).toString("base64url")}.${sig}`;
+}
+
+async function readToken(token: string): Promise<string | null> {
+  const [idPart, sig] = token.split(".");
+  if (!idPart || !sig) return null;
+  const userId = Buffer.from(idPart, "base64url").toString();
+  const secret = await getSecret();
+  const expected = createHmac("sha256", secret).update(userId).digest("base64url");
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return userId;
+}
+
+function getCookie(req: Request, name: string): string | null {
+  const header = req.headers.cookie;
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(v.join("="));
+  }
+  return null;
+}
+
+export async function setSession(res: Response, userId: string) {
+  res.cookie(COOKIE, await makeToken(userId), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 1000 * 60 * 60 * 24 * 180, // 180 days
+  });
+}
+
+export function clearSession(res: Response) {
+  res.clearCookie(COOKIE, { path: "/" });
+}
+
+/* ----------------------------- current user ----------------------------- */
+
+export interface AuthUser {
+  id: string;
+  familyId: string;
+  role: "parent" | "child";
+  username: string;
+  displayName: string;
+}
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+    }
+  }
+}
+
+async function currentUser(req: Request): Promise<AuthUser | null> {
+  const token = getCookie(req, COOKIE);
+  if (!token) return null;
+  const userId = await readToken(token);
+  if (!userId) return null;
+  const rows = await query<AuthUser>(
+    `SELECT id, family_id AS "familyId", role, username, display_name AS "displayName"
+     FROM mp_users WHERE id = $1`,
+    [userId],
   );
-  cache = null; // invalidate
+  return rows[0] ?? null;
 }
 
-/* ------------------------------ middleware ------------------------------ */
-
-/**
- * Gate for all data routes. When an app code is set, every request must carry
- * a matching `x-app-code` header. Auth routes and the health check are mounted
- * before this, so they stay reachable while the app is locked.
- */
-export async function requireAppCode(req: Request, res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    const { appCodeHash } = await getSettings();
-    if (!appCodeHash) return next(); // no code configured yet → open
-    const provided = req.header("x-app-code");
-    if (provided && verifyCode(provided, appCodeHash)) return next();
-    res.status(401).json({ error: "Locked", code: "APP_CODE_REQUIRED" });
+    const user = await currentUser(req);
+    if (!user) {
+      res.status(401).json({ error: "Not signed in", code: "AUTH_REQUIRED" });
+      return;
+    }
+    req.user = user;
+    next();
   } catch (err) {
     next(err);
   }
+}
+
+export function requireParent(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.role !== "parent") {
+    res.status(403).json({ error: "Only a parent can do that" });
+    return;
+  }
+  next();
+}
+
+/* ------------------------------ validation ------------------------------ */
+
+const h =
+  (fn: (req: Request, res: Response) => Promise<unknown>) =>
+  (req: Request, res: Response) => {
+    fn(req, res).catch((err) => {
+      console.error(err);
+      if (!res.headersSent) res.status(500).json({ error: "Server error" });
+    });
+  };
+
+export function cleanUsername(input: unknown): string {
+  return String(input ?? "").trim().toLowerCase();
+}
+
+function validCredentials(username: string, password: string): string | null {
+  if (username.length < 3) return "Username must be at least 3 characters";
+  if (!/^[a-z0-9_.-]+$/.test(username)) return "Username can use letters, numbers, . _ - only";
+  if (String(password).length < 4) return "Password must be at least 4 characters";
+  return null;
+}
+
+function publicUser(u: AuthUser) {
+  return { id: u.id, role: u.role, displayName: u.displayName, username: u.username };
 }
 
 /* -------------------------------- routes -------------------------------- */
 
 export const authRouter = Router();
 
-const MIN_LEN = 4;
+// Register a NEW family with its first parent account.
+authRouter.post(
+  "/auth/register",
+  h(async (req, res) => {
+    const { familyName, displayName, username: rawU, password } = req.body ?? {};
+    const username = cleanUsername(rawU);
+    const bad = validCredentials(username, password);
+    if (bad) return void res.status(400).json({ error: bad });
+    if (!displayName || !String(displayName).trim())
+      return void res.status(400).json({ error: "Your name is required" });
 
-// What's configured — never returns the codes themselves.
-authRouter.get("/auth/status", async (_req, res) => {
-  const s = await getSettings();
-  res.json({ appCodeSet: !!s.appCodeHash, parentCodeSet: !!s.parentCodeHash });
-});
+    const taken = await query(`SELECT 1 FROM mp_users WHERE username = $1`, [username]);
+    if (taken.length) return void res.status(409).json({ error: "That username is taken" });
 
-// Check a code for a given scope ("app" or "parent").
-authRouter.post("/auth/verify", async (req, res) => {
-  const { code, scope } = req.body ?? {};
-  const s = await getSettings();
-  const hash = scope === "parent" ? s.parentCodeHash : s.appCodeHash;
-  res.json({ ok: typeof code === "string" && verifyCode(code, hash) });
-});
+    const { randomUUID } = await import("node:crypto");
+    const familyId = randomUUID();
+    await query(`INSERT INTO mp_families (id, name) VALUES ($1, $2)`, [
+      familyId,
+      String(familyName || "My family").trim(),
+    ]);
+    const userId = randomUUID();
+    await query(
+      `INSERT INTO mp_users (id, family_id, role, username, password_hash, display_name)
+       VALUES ($1, $2, 'parent', $3, $4, $5)`,
+      [userId, familyId, username, hashPassword(password), String(displayName).trim()],
+    );
+    await setSession(res, userId);
+    res.status(201).json(publicUser({ id: userId, familyId, role: "parent", username, displayName: String(displayName).trim() }));
+  }),
+);
 
-// Create or change codes. First-time setup is open (no app code yet); once an
-// app code exists, any change requires the current app code.
-authRouter.post("/auth/setup", async (req, res) => {
-  const { appCode, parentCode, currentCode } = req.body ?? {};
-  const s = await getSettings();
-
-  if (s.appCodeHash && !verifyCode(String(currentCode ?? ""), s.appCodeHash)) {
-    res.status(403).json({ error: "Wrong current access code" });
-    return;
-  }
-
-  const patch: { appCodeHash?: string; parentCodeHash?: string } = {};
-  if (typeof appCode === "string" && appCode.length) {
-    if (appCode.length < MIN_LEN) {
-      res.status(400).json({ error: `The code must be at least ${MIN_LEN} characters` });
-      return;
+authRouter.post(
+  "/auth/login",
+  h(async (req, res) => {
+    const username = cleanUsername(req.body?.username);
+    const password = String(req.body?.password ?? "");
+    const rows = await query<AuthUser & { password_hash: string }>(
+      `SELECT id, family_id AS "familyId", role, username, display_name AS "displayName", password_hash
+       FROM mp_users WHERE username = $1`,
+      [username],
+    );
+    const u = rows[0];
+    if (!u || !verifyPassword(password, u.password_hash)) {
+      return void res.status(401).json({ error: "Wrong username or password" });
     }
-    patch.appCodeHash = hashCode(appCode);
-  }
-  if (typeof parentCode === "string" && parentCode.length) {
-    if (parentCode.length < MIN_LEN) {
-      res.status(400).json({ error: `The code must be at least ${MIN_LEN} characters` });
-      return;
-    }
-    patch.parentCodeHash = hashCode(parentCode);
-  }
+    await setSession(res, u.id);
+    res.json(publicUser(u));
+  }),
+);
 
-  if (!patch.appCodeHash && !patch.parentCodeHash) {
-    res.status(400).json({ error: "Nothing to update" });
-    return;
-  }
-
-  await saveCodes(patch);
-  const ns = await getSettings();
-  res.json({ appCodeSet: !!ns.appCodeHash, parentCodeSet: !!ns.parentCodeHash });
+authRouter.post("/auth/logout", (_req, res) => {
+  clearSession(res);
+  res.status(204).end();
 });
+
+authRouter.get(
+  "/auth/me",
+  h(async (req, res) => {
+    const user = await currentUser(req);
+    if (!user) return void res.status(401).json({ error: "Not signed in", code: "AUTH_REQUIRED" });
+    res.json(publicUser(user));
+  }),
+);

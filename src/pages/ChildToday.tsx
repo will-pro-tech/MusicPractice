@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Sparkles } from "lucide-react";
-import type { Child, Session } from "../types";
+import type { Session } from "../types";
 import { api } from "../api";
 import { todayISO, formatDate } from "../lib";
 import { Button, EmptyState, Spinner } from "../ui";
 import SessionCard from "../SessionCard";
 import SessionForm from "../SessionForm";
 
-export default function ChildToday({ child }: { child: Child }) {
+export default function ChildToday({ name }: { name: string }) {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [form, setForm] = useState<{ open: boolean; edit?: Session | null }>({ open: false });
 
   const load = useCallback(async () => {
-    setSessions(await api.listSessions({ childId: child.id, date: todayISO() }));
-  }, [child.id]);
+    setSessions(await api.listSessions({ date: todayISO() }));
+  }, []);
 
   useEffect(() => {
-    setSessions(null);
     load();
   }, [load]);
 
@@ -24,7 +23,7 @@ export default function ChildToday({ child }: { child: Child }) {
     <div className="space-y-4">
       <div className="rounded-3xl bg-gradient-to-br from-teal-500 to-teal-600 p-5 text-white">
         <p className="text-sm text-teal-100">{formatDate(todayISO())}</p>
-        <h1 className="mt-0.5 text-2xl font-bold">Hi, {child.name}</h1>
+        <h1 className="mt-0.5 text-2xl font-bold">Hi, {name}</h1>
         <p className="mt-1 text-sm text-teal-50">
           Focus on today's goals — the clock matters least.
         </p>
@@ -55,7 +54,6 @@ export default function ChildToday({ child }: { child: Child }) {
 
       {form.open && (
         <SessionForm
-          child={child}
           initial={form.edit}
           onClose={() => setForm({ open: false })}
           onSaved={() => {

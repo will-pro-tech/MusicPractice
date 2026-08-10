@@ -1,20 +1,23 @@
-import type { AuthStatus, Child, Service, Session, Song, Summary } from "./types";
+import type {
+  Child,
+  InvitePreview,
+  MyChild,
+  Service,
+  Session,
+  Song,
+  SundaySongs,
+  Summary,
+  User,
+} from "./types";
 
-export const APP_CODE_KEY = "appCode";
+/** Fired when a request comes back 401 — the AuthProvider drops the user. */
+export const AUTH_EXPIRED = "mp-auth-expired";
 
-async function request<T>(
-  method: string,
-  url: string,
-  body?: unknown,
-): Promise<T> {
-  const headers: Record<string, string> = {};
-  if (body) headers["Content-Type"] = "application/json";
-  const appCode = localStorage.getItem(APP_CODE_KEY);
-  if (appCode) headers["x-app-code"] = appCode;
-
+async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method,
-    headers,
+    credentials: "same-origin",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -27,49 +30,60 @@ async function request<T>(
     } catch {
       /* ignore */
     }
-    // The stored access code is missing or no longer valid — drop it and
-    // send the user back to the lock screen.
-    if (res.status === 401 && code === "APP_CODE_REQUIRED") {
-      localStorage.removeItem(APP_CODE_KEY);
-      location.reload();
+    if (res.status === 401 && code === "AUTH_REQUIRED") {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED));
     }
-    throw new Error(message);
+    const err = new Error(message) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
-export type NewSession = Omit<
-  Session,
-  "id" | "createdAt" | "updatedAt"
->;
+export type NewSession = Omit<Session, "id" | "childId" | "createdAt" | "updatedAt">;
 
 export const api = {
-  // children
+  // ---- auth ----
+  me: () => request<User>("GET", "/api/auth/me"),
+  register: (data: { familyName: string; displayName: string; username: string; password: string }) =>
+    request<User>("POST", "/api/auth/register", data),
+  login: (data: { username: string; password: string }) =>
+    request<User>("POST", "/api/auth/login", data),
+  logout: () => request<void>("POST", "/api/auth/logout"),
+  getInvite: (code: string) => request<InvitePreview>("GET", `/api/invite/${encodeURIComponent(code)}`),
+  acceptInvite: (code: string, data: { username: string; password: string }) =>
+    request<User>("POST", `/api/invite/${encodeURIComponent(code)}/accept`, data),
+
+  // ---- children / invites (parent) ----
   listChildren: () => request<Child[]>("GET", "/api/children"),
   createChild: (data: { name: string; instrument?: string; color?: string }) =>
     request<Child>("POST", "/api/children", data),
   updateChild: (id: string, data: Partial<Pick<Child, "name" | "instrument" | "color">>) =>
-    request<Child>("PATCH", `/api/children/${id}`, data),
+    request<{ ok: true }>("PATCH", `/api/children/${id}`, data),
   deleteChild: (id: string) => request<void>("DELETE", `/api/children/${id}`),
+  newInvite: (id: string) => request<{ inviteCode: string }>("POST", `/api/children/${id}/new-invite`),
+  resetChildPassword: (id: string, password: string) =>
+    request<{ ok: true }>("POST", `/api/children/${id}/reset-password`, { password }),
+  myChild: () => request<MyChild>("GET", "/api/me/child"),
 
-  // sessions
+  // ---- sessions ----
   listSessions: (params: { childId?: string; date?: string; from?: string; to?: string } = {}) => {
     const q = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v != null) as [string, string][],
     ).toString();
     return request<Session[]>("GET", `/api/sessions${q ? `?${q}` : ""}`);
   },
-  createSession: (data: Partial<NewSession> & { childId: string; date: string }) =>
+  createSession: (data: Partial<NewSession> & { date: string }) =>
     request<Session>("POST", "/api/sessions", data),
   updateSession: (id: string, data: Partial<NewSession>) =>
     request<Session>("PATCH", `/api/sessions/${id}`, data),
   deleteSession: (id: string) => request<void>("DELETE", `/api/sessions/${id}`),
 
-  // parent summary
+  // ---- parent summary ----
   summary: (days = 30) => request<Summary>("GET", `/api/summary?days=${days}`),
 
-  // song repertoire
+  // ---- song repertoire ----
   listSongs: (params: { q?: string; tag?: string } = {}) => {
     const q = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v) as [string, string][],
@@ -83,8 +97,9 @@ export const api = {
     request<Song>("PATCH", `/api/songs/${id}`, data),
   deleteSong: (id: string) => request<void>("DELETE", `/api/songs/${id}`),
 
-  // Sunday service planning
+  // ---- Sunday services ----
   listServices: () => request<Service[]>("GET", "/api/services"),
+  sundaySongs: () => request<SundaySongs>("GET", "/api/sunday-songs"),
   createService: (data: { date: string; theme?: string; notes?: string; songIds?: string[] }) =>
     request<Service>("POST", "/api/services", data),
   updateService: (
@@ -92,11 +107,4 @@ export const api = {
     data: { date?: string; theme?: string; notes?: string; songIds?: string[] },
   ) => request<Service>("PATCH", `/api/services/${id}`, data),
   deleteService: (id: string) => request<void>("DELETE", `/api/services/${id}`),
-
-  // access codes
-  authStatus: () => request<AuthStatus>("GET", "/api/auth/status"),
-  verifyCode: (code: string, scope: "app" | "parent") =>
-    request<{ ok: boolean }>("POST", "/api/auth/verify", { code, scope }),
-  setupCodes: (data: { appCode?: string; parentCode?: string; currentCode?: string }) =>
-    request<AuthStatus>("POST", "/api/auth/setup", data),
 };

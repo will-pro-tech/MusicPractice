@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Church, Music4 } from "lucide-react";
-import type { Child, Session } from "../types";
+import type { Session } from "../types";
 import { api } from "../api";
 import { formatDate, formatTime, relativeDay, cn } from "../lib";
 import { EmptyState, Spinner } from "../ui";
 import SessionCard from "../SessionCard";
 import SessionForm from "../SessionForm";
 
-export default function ChildHistory({ child }: { child: Child }) {
+export default function ChildHistory() {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [edit, setEdit] = useState<Session | null>(null);
 
   const load = useCallback(async () => {
-    setSessions(await api.listSessions({ childId: child.id }));
-  }, [child.id]);
+    setSessions(await api.listSessions());
+  }, []);
 
   useEffect(() => {
     setSessions(null);
@@ -38,7 +38,6 @@ export default function ChildHistory({ child }: { child: Child }) {
 
       {edit && (
         <SessionForm
-          child={child}
           initial={edit}
           onClose={() => setEdit(null)}
           onSaved={() => {

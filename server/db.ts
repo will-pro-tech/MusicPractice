@@ -11,7 +11,6 @@ const isLocal =
 
 export const pool = new Pool({
   connectionString,
-  // Managed Postgres (Replit/most cloud providers) requires SSL; local dev does not.
   ssl: isLocal ? undefined : { rejectUnauthorized: false },
 });
 
@@ -24,14 +23,49 @@ export async function query<T = Record<string, unknown>>(
 }
 
 /**
- * Creates the two tables the app needs if they don't already exist.
- * Runs once on server boot — no migration tooling required. Table names are
- * prefixed `mp_` so they never collide with any other app sharing the database.
+ * Creates every table the app needs if it doesn't already exist, and adds any
+ * newer columns to older installs. Runs once on boot — no migration tooling.
+ * All tenant tables carry a family_id so one database can hold many families,
+ * each isolated from the others.
  */
 export async function initSchema(): Promise<void> {
+  // Small key/value store — currently holds the signing secret for sessions.
+  await query(`
+    CREATE TABLE IF NOT EXISTS mp_config (
+      key text PRIMARY KEY,
+      value text NOT NULL
+    );
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS mp_families (
+      id text PRIMARY KEY,
+      name text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+
+  // Login accounts — one per person (parents and children alike).
+  await query(`
+    CREATE TABLE IF NOT EXISTS mp_users (
+      id text PRIMARY KEY,
+      family_id text NOT NULL REFERENCES mp_families(id) ON DELETE CASCADE,
+      role text NOT NULL,
+      username text NOT NULL UNIQUE,
+      password_hash text NOT NULL,
+      display_name text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+
+  // Child profiles (instrument, color). A child has both a profile and a
+  // linked user account; user_id is null until the child accepts the invite.
   await query(`
     CREATE TABLE IF NOT EXISTS mp_children (
       id text PRIMARY KEY,
+      family_id text REFERENCES mp_families(id) ON DELETE CASCADE,
+      user_id text REFERENCES mp_users(id) ON DELETE SET NULL,
+      invite_code text UNIQUE,
       name text NOT NULL,
       instrument text NOT NULL DEFAULT '',
       color text NOT NULL DEFAULT 'teal',
@@ -39,10 +73,14 @@ export async function initSchema(): Promise<void> {
       created_at timestamptz NOT NULL DEFAULT now()
     );
   `);
+  await query(`ALTER TABLE mp_children ADD COLUMN IF NOT EXISTS family_id text REFERENCES mp_families(id) ON DELETE CASCADE;`);
+  await query(`ALTER TABLE mp_children ADD COLUMN IF NOT EXISTS user_id text REFERENCES mp_users(id) ON DELETE SET NULL;`);
+  await query(`ALTER TABLE mp_children ADD COLUMN IF NOT EXISTS invite_code text;`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS mp_sessions (
       id text PRIMARY KEY,
+      family_id text REFERENCES mp_families(id) ON DELETE CASCADE,
       child_id text NOT NULL REFERENCES mp_children(id) ON DELETE CASCADE,
       practice_date date NOT NULL,
       practice_time text,
@@ -58,36 +96,34 @@ export async function initSchema(): Promise<void> {
       updated_at timestamptz NOT NULL DEFAULT now()
     );
   `);
+  await query(`ALTER TABLE mp_sessions ADD COLUMN IF NOT EXISTS family_id text REFERENCES mp_families(id) ON DELETE CASCADE;`);
+  await query(`CREATE INDEX IF NOT EXISTS mp_sessions_child_date_idx ON mp_sessions (child_id, practice_date);`);
 
-  await query(
-    `CREATE INDEX IF NOT EXISTS mp_sessions_child_date_idx ON mp_sessions (child_id, practice_date);`,
-  );
-
-  // Shared song repertoire. Children pick from it when planning, and the band
-  // director plans Sunday services from the same list. Tags enable theme search.
+  // Shared song repertoire (per family).
   await query(`
     CREATE TABLE IF NOT EXISTS mp_songs (
       id text PRIMARY KEY,
+      family_id text REFERENCES mp_families(id) ON DELETE CASCADE,
       title text NOT NULL,
       tags jsonb NOT NULL DEFAULT '[]'::jsonb,
       notes text NOT NULL DEFAULT '',
       created_at timestamptz NOT NULL DEFAULT now()
     );
   `);
+  await query(`ALTER TABLE mp_songs ADD COLUMN IF NOT EXISTS family_id text REFERENCES mp_families(id) ON DELETE CASCADE;`);
 
-  // A Sunday service (or any date) the director plans.
   await query(`
     CREATE TABLE IF NOT EXISTS mp_services (
       id text PRIMARY KEY,
+      family_id text REFERENCES mp_families(id) ON DELETE CASCADE,
       service_date date NOT NULL,
       theme text NOT NULL DEFAULT '',
       notes text NOT NULL DEFAULT '',
       created_at timestamptz NOT NULL DEFAULT now()
     );
   `);
+  await query(`ALTER TABLE mp_services ADD COLUMN IF NOT EXISTS family_id text REFERENCES mp_families(id) ON DELETE CASCADE;`);
 
-  // Ordered songs chosen for a service. Keeps a title snapshot so the plan
-  // survives even if the song is later removed from the repertoire.
   await query(`
     CREATE TABLE IF NOT EXISTS mp_service_songs (
       id text PRIMARY KEY,
@@ -97,19 +133,5 @@ export async function initSchema(): Promise<void> {
       sort_order integer NOT NULL DEFAULT 0
     );
   `);
-
-  await query(
-    `CREATE INDEX IF NOT EXISTS mp_service_songs_service_idx ON mp_service_songs (service_id);`,
-  );
-
-  // Single-row settings: the access codes that gate the app. Stored as scrypt
-  // hashes (salt:hash), never in plain text. Null means "no code set yet".
-  await query(`
-    CREATE TABLE IF NOT EXISTS mp_settings (
-      id text PRIMARY KEY DEFAULT 'default',
-      app_code_hash text,
-      parent_code_hash text,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    );
-  `);
+  await query(`CREATE INDEX IF NOT EXISTS mp_service_songs_service_idx ON mp_service_songs (service_id);`);
 }

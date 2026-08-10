@@ -76,19 +76,24 @@ pnpm run start          # NODE_ENV=production node dist/index.mjs
 | PATCH/DELETE | `/api/services/:id` | Edit (incl. `songIds`) / delete service |
 | GET | `/api/healthz` | Health check |
 
-## Access codes
+## Accounts, family & invites
 
-The app is protected by a shared **access code**:
+Everyone has their own login (username + password, no email needed):
 
-- On first launch you create the code. After that, everyone must enter it to
-  open the app — it is enforced on the server for every request (sent as the
-  `x-app-code` header), not just hidden in the UI. Codes are stored as scrypt
-  hashes, never in plain text.
-- An optional **parent code** protects the Parents section from the kids. Set or
-  change both codes from **Parents → ⚙ (Access codes)**.
+- A **parent** signs up, which creates the **family group**.
+- The parent adds each child (name + instrument) in the **Kids** tab, which
+  generates a private **invite link**.
+- The child opens the link, picks their own username + password, and joins the
+  same family. The parent can reset a child's password anytime.
+- Each request is authenticated with a signed, http-only session cookie and is
+  scoped to the user's family, so families never see each other's data.
+  Passwords are stored as scrypt hashes.
 
-There is no per-user login: one family shares the data, and the Kid/Parents
-switch selects the view.
+Roles come from the account: parents see Summary / Repertoire / Sundays / Kids;
+children see their own Today / History.
+
+When a child plans a practice, the **church song** must be chosen from the songs
+the parent selected for the upcoming **Sunday** service.
 
 ## Notes
 

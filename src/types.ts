@@ -1,10 +1,34 @@
+export type Role = "child" | "parent";
+
+export interface User {
+  id: string;
+  role: Role;
+  displayName: string;
+  username: string;
+}
+
 export interface Child {
   id: string;
   name: string;
   instrument: string;
   color: string;
   sortOrder: number;
-  createdAt: string;
+  inviteCode: string | null;
+  joined: boolean;
+  username: string | null;
+}
+
+/** The logged-in child's own profile. */
+export interface MyChild {
+  id: string;
+  name: string;
+  instrument: string;
+  color: string;
+}
+
+export interface InvitePreview {
+  childName: string;
+  familyName: string;
 }
 
 export interface Session {
@@ -59,9 +83,7 @@ export interface Service {
   songs: ServiceSong[];
 }
 
-export interface AuthStatus {
-  appCodeSet: boolean;
-  parentCodeSet: boolean;
+export interface SundaySongs {
+  service: { date: string; theme: string } | null;
+  songs: ServiceSong[];
 }
-
-export type Role = "child" | "parent";
