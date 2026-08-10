@@ -14,14 +14,14 @@ import ParentServices from "./pages/ParentServices";
 type Tab = "today" | "history" | "summary" | "repertoire" | "services" | "children";
 
 const CHILD_TABS: { id: Tab; label: string; icon: typeof CalendarCheck }[] = [
-  { id: "today", label: "Hoy", icon: CalendarCheck },
-  { id: "history", label: "Historial", icon: History },
+  { id: "today", label: "Today", icon: CalendarCheck },
+  { id: "history", label: "History", icon: History },
 ];
 const PARENT_TABS: { id: Tab; label: string; icon: typeof CalendarCheck }[] = [
-  { id: "summary", label: "Resumen", icon: BarChart3 },
-  { id: "repertoire", label: "Repertorio", icon: ListMusic },
-  { id: "services", label: "Domingos", icon: CalendarDays },
-  { id: "children", label: "Niños", icon: Users },
+  { id: "summary", label: "Summary", icon: BarChart3 },
+  { id: "repertoire", label: "Repertoire", icon: ListMusic },
+  { id: "services", label: "Sundays", icon: CalendarDays },
+  { id: "children", label: "Kids", icon: Users },
 ];
 
 export default function App() {
@@ -72,7 +72,7 @@ export default function App() {
             <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-600 text-white">
               <Music2 size={18} />
             </span>
-            Mi Práctica
+            My Practice
           </div>
           <RoleToggle role={role} onChange={switchRole} />
         </div>
@@ -166,7 +166,7 @@ function RoleToggle({ role, onChange }: { role: Role; onChange: (r: Role) => voi
             role === r ? "bg-white text-teal-700 shadow-sm" : "text-neutral-500",
           )}
         >
-          {r === "child" ? "Niño" : "Padres"}
+          {r === "child" ? "Kid" : "Parents"}
         </button>
       ))}
     </div>
@@ -176,9 +176,9 @@ function RoleToggle({ role, onChange }: { role: Role; onChange: (r: Role) => voi
 function NoChildren() {
   return (
     <div className="rounded-2xl border border-dashed border-neutral-300 bg-white/60 px-4 py-12 text-center">
-      <p className="font-semibold text-neutral-700">Aún no hay ningún niño configurado</p>
+      <p className="font-semibold text-neutral-700">No kids set up yet</p>
       <p className="mt-1 text-sm text-neutral-500">
-        Cambia a <span className="font-medium">Padres</span> arriba y agrega a cada hijo con su instrumento.
+        Switch to <span className="font-medium">Parents</span> above and add each child with their instrument.
       </p>
     </div>
   );

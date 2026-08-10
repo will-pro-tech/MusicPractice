@@ -49,7 +49,7 @@ export function TagInput({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           onBlur={() => add(text)}
-          placeholder={value.length ? "" : "Agrega un tema y Enter…"}
+          placeholder={value.length ? "" : "Add a theme and press Enter…"}
           className="min-w-[8rem] flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
         />
       </div>
@@ -84,7 +84,7 @@ export function TagFilter({
   if (tags.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1.5">
-      <Chip label="Todas" selected={active === null} onClick={() => onSelect(null)} />
+      <Chip label="All" selected={active === null} onClick={() => onSelect(null)} />
       {tags.map((t) => (
         <Chip key={t} label={t} selected={active === t} onClick={() => onSelect(active === t ? null : t)} />
       ))}

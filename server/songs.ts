@@ -9,7 +9,7 @@ const h =
   (req: Request, res: Response) => {
     fn(req, res).catch((err) => {
       console.error(err);
-      if (!res.headersSent) res.status(500).json({ error: "Error del servidor" });
+      if (!res.headersSent) res.status(500).json({ error: "Server error" });
     });
   };
 
@@ -63,7 +63,7 @@ songsRouter.post(
   h(async (req, res) => {
     const { title, tags, notes = "" } = req.body ?? {};
     if (!title || !String(title).trim()) {
-      res.status(400).json({ error: "El nombre de la canción es obligatorio" });
+      res.status(400).json({ error: "Song name is required" });
       return;
     }
     const [row] = await query(
@@ -95,7 +95,7 @@ songsRouter.patch(
       ],
     );
     if (!row) {
-      res.status(404).json({ error: "No encontrada" });
+      res.status(404).json({ error: "Not found" });
       return;
     }
     res.json(row);

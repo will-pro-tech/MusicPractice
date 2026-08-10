@@ -1,85 +1,84 @@
-# Mi Práctica Musical
+# My Music Practice
 
-App sencilla y mobile-first para que los niños registren su práctica diaria de
-instrumento y los padres puedan ver el progreso. El enfoque está en **metas**,
-no en cumplir minutos. Es un proyecto **independiente y auto-contenido**.
+A simple, mobile-first app for kids to log their daily instrument practice and
+for parents to follow their progress. The focus is on **goals**, not minutes.
+It is a **standalone, self-contained** project.
 
-Cada práctica del día tiene tres partes:
+Each daily practice has three parts:
 
-1. **Ejercicios** — técnica, escalas, etc.
-2. **Canción del repertorio (iglesia)** — elegida del repertorio compartido.
-3. **Canción nueva** — con una **meta específica** (ej. "dos líneas de la
-   partitura") y una casilla de **"meta cumplida"**.
+1. **Exercises** — technique, scales, etc.
+2. **Church repertoire song** — chosen from the shared repertoire.
+3. **New song** — with a **specific goal** (e.g. "the first two lines of the
+   sheet music") and a **"goal met"** checkbox.
 
-El niño también indica **día y hora** de cada práctica.
+Kids also set the **day and time** of each practice.
 
-## Vistas
+## Views
 
-- **Niño** (`Hoy` / `Historial`): planea la práctica y marca lo completado. El
-  historial se guarda en filas compactas y expandibles.
-- **Padres** (`Resumen` / `Repertorio` / `Domingos` / `Niños`):
-  - **Resumen** — metas y consistencia de cada hijo.
-  - **Repertorio** — biblioteca de canciones con **tags/temas** y búsqueda.
-  - **Domingos** — la directora planifica cada servicio eligiendo canciones del
-    repertorio, filtrando por tema, y define el orden.
-  - **Niños** — configura a los hijos e instrumentos.
+- **Kid** (`Today` / `History`): plan the practice and check off what's done.
+  History is stored as compact, expandable rows.
+- **Parents** (`Summary` / `Repertoire` / `Sundays` / `Kids`):
+  - **Summary** — goals and consistency for each child.
+  - **Repertoire** — shared song library with **tags/themes** and search.
+  - **Sundays** — the band director plans each service by picking songs from the
+    repertoire, filtering by theme, and setting the running order.
+  - **Kids** — manage children and instruments.
 
-Se cambia entre "Niño" y "Padres" con el interruptor de arriba a la derecha.
+Toggle between "Kid" and "Parents" with the switch at the top right.
 
 ## Stack
 
-- **Frontend:** React 19 + Vite + Tailwind CSS v4 (PWA instalable).
-- **Backend:** Express 5 sirviendo la API y la app estática en el mismo puerto.
-- **Datos:** PostgreSQL (`DATABASE_URL`). Las tablas (`mp_children`,
-  `mp_sessions`, `mp_songs`, `mp_services`, `mp_service_songs`) se crean solas
-  al arrancar — no hay migraciones que correr.
+- **Frontend:** React 19 + Vite + Tailwind CSS v4 (installable PWA).
+- **Backend:** Express 5 serving the API and the static app on one port.
+- **Data:** PostgreSQL (`DATABASE_URL`). Tables (`mp_children`, `mp_sessions`,
+  `mp_songs`, `mp_services`, `mp_service_songs`) are created automatically on
+  boot — no migrations to run.
 
-## Desarrollo local
+## Local development
 
 ```bash
-# Requiere DATABASE_URL apuntando a un Postgres.
+# Requires DATABASE_URL pointing at a Postgres instance.
 pnpm install
-pnpm run dev            # http://localhost:8081  (API + app, con recarga)
+pnpm run dev            # http://localhost:8081  (API + app, with hot reload)
 ```
 
-## Build y arranque de producción
+## Production build & start
 
 ```bash
 pnpm run build          # client → dist/public, server → dist/index.mjs
 pnpm run start          # NODE_ENV=production node dist/index.mjs
 ```
 
-## Publicar en Replit
+## Deploy on Replit
 
-1. **Create Repl → Import from GitHub** y elige este repositorio.
-2. Añade una base de datos: panel **Database** (PostgreSQL) — Replit crea la
-   variable `DATABASE_URL` automáticamente.
-3. Pulsa **Run** para probarla (webview en el puerto 8081).
-4. Para publicarla: **Deploy → Autoscale**. El `.replit` ya trae los comandos
-   de build y run. Deja el deployment **Público** para que el ícono de la PWA
-   funcione en iPhone.
-5. En el teléfono: abre la URL publicada → **Compartir → "Agregar a pantalla de
-   inicio"**.
+1. **Create Repl → Import from GitHub** and pick this repository.
+2. Add a database: **Database** panel (PostgreSQL) — Replit sets `DATABASE_URL`
+   automatically.
+3. Press **Run** to test it (webview on port 8081).
+4. To publish: **Deploy → Autoscale**. The `.replit` already includes the build
+   and run commands. Keep the deployment **Public** so the PWA icon works on
+   iPhone.
+5. On your phone: open the published URL → **Share → "Add to Home Screen"**.
 
 ## API
 
-| Método | Ruta | Descripción |
+| Method | Path | Description |
 | --- | --- | --- |
-| GET/POST | `/api/children` | Listar / crear hijos |
-| PATCH/DELETE | `/api/children/:id` | Editar / eliminar hijo |
-| GET/POST | `/api/sessions` | Listar (`?childId=&date=&from=&to=`) / crear práctica |
-| PATCH/DELETE | `/api/sessions/:id` | Editar / eliminar práctica |
-| GET | `/api/summary?days=30` | Resumen por hijo (vista de padres) |
-| GET/POST | `/api/songs` | Repertorio: listar (`?q=&tag=`) / crear canción |
-| PATCH/DELETE | `/api/songs/:id` | Editar / eliminar canción |
-| GET | `/api/song-tags` | Tags/temas para los filtros |
-| GET/POST | `/api/services` | Domingos: listar / crear servicio (con `songIds`) |
-| PATCH/DELETE | `/api/services/:id` | Editar (incl. `songIds`) / eliminar servicio |
+| GET/POST | `/api/children` | List / create kids |
+| PATCH/DELETE | `/api/children/:id` | Edit / delete child |
+| GET/POST | `/api/sessions` | List (`?childId=&date=&from=&to=`) / create practice |
+| PATCH/DELETE | `/api/sessions/:id` | Edit / delete practice |
+| GET | `/api/summary?days=30` | Per-child summary (parent view) |
+| GET/POST | `/api/songs` | Repertoire: list (`?q=&tag=`) / create song |
+| PATCH/DELETE | `/api/songs/:id` | Edit / delete song |
+| GET | `/api/song-tags` | Tags/themes for the filters |
+| GET/POST | `/api/services` | Sundays: list / create service (with `songIds`) |
+| PATCH/DELETE | `/api/services/:id` | Edit (incl. `songIds`) / delete service |
 | GET | `/api/healthz` | Health check |
 
-## Notas
+## Notes
 
-- **MVP sin login:** una sola familia comparte los datos; el rol Niño/Padres es
-  un interruptor. Se puede añadir un código de acceso más adelante.
-- Para llevarla a las tiendas (App Store / Google Play), se puede envolver con
-  Capacitor reutilizando este mismo código.
+- **No login (MVP):** a single family shares the data; the Kid/Parents role is a
+  toggle. A passcode can be added later.
+- To ship it to the app stores (App Store / Google Play), it can be wrapped with
+  Capacitor reusing this same code.

@@ -9,7 +9,7 @@ const h =
   (req: Request, res: Response) => {
     fn(req, res).catch((err) => {
       console.error(err);
-      if (!res.headersSent) res.status(500).json({ error: "Error del servidor" });
+      if (!res.headersSent) res.status(500).json({ error: "Server error" });
     });
   };
 
@@ -77,7 +77,7 @@ servicesRouter.post(
   h(async (req, res) => {
     const { date, theme = "", notes = "", songIds } = req.body ?? {};
     if (!date) {
-      res.status(400).json({ error: "Falta la fecha del servicio" });
+      res.status(400).json({ error: "Service date is required" });
       return;
     }
     const [service] = await query<ServiceRow>(
@@ -105,7 +105,7 @@ servicesRouter.patch(
       [req.params.id, date ?? null, theme ?? null, notes ?? null],
     );
     if (!service) {
-      res.status(404).json({ error: "No encontrado" });
+      res.status(404).json({ error: "Not found" });
       return;
     }
     if (songIds !== undefined) await setSongs(service.id, songIds);

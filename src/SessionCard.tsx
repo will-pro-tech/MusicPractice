@@ -26,7 +26,7 @@ export default function SessionCard({ session, onChanged, onEdit, showDate }: Pr
   }
 
   async function remove() {
-    if (!confirm("¿Eliminar esta práctica?")) return;
+    if (!confirm("Delete this practice?")) return;
     await api.deleteSession(session.id);
     onChanged();
   }
@@ -59,9 +59,9 @@ export default function SessionCard({ session, onChanged, onEdit, showDate }: Pr
         onToggle={() => patch({ exercisesDone: !session.exercisesDone })}
         icon={<Dumbbell size={18} />}
         accent="text-teal-600"
-        title="Ejercicios"
+        title="Exercises"
       >
-        {session.exercisesNote || <span className="text-neutral-400">Sin detalle</span>}
+        {session.exercisesNote || <span className="text-neutral-400">No detail</span>}
       </CheckRow>
 
       <CheckRow
@@ -69,12 +69,12 @@ export default function SessionCard({ session, onChanged, onEdit, showDate }: Pr
         onToggle={() => patch({ churchDone: !session.churchDone })}
         icon={<Church size={18} />}
         accent="text-amber-600"
-        title="Canción de la iglesia"
+        title="Church song"
       >
         {session.churchSong ? (
           <span className="font-medium text-neutral-700">🎵 {session.churchSong}</span>
         ) : (
-          <span className="text-neutral-400">Aún sin nombre de canción</span>
+          <span className="text-neutral-400">No song name yet</span>
         )}
       </CheckRow>
 
@@ -83,16 +83,16 @@ export default function SessionCard({ session, onChanged, onEdit, showDate }: Pr
         onToggle={() => patch({ newSongGoalMet: !session.newSongGoalMet })}
         icon={<Music4 size={18} />}
         accent="text-violet-600"
-        title="Canción nueva — meta cumplida"
+        title="New song — goal met"
       >
         {session.newSong && <div className="font-medium text-neutral-700">🎼 {session.newSong}</div>}
         {session.newSongGoal ? (
           <div className="mt-0.5">
-            <span className="text-neutral-400">Meta: </span>
+            <span className="text-neutral-400">Goal: </span>
             {session.newSongGoal}
           </div>
         ) : (
-          <span className="text-neutral-400">Sin meta definida</span>
+          <span className="text-neutral-400">No goal set</span>
         )}
       </CheckRow>
 

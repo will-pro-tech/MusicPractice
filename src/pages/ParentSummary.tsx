@@ -19,14 +19,14 @@ export default function ParentSummary() {
   return (
     <div className="space-y-4">
       <div className="px-1">
-        <h1 className="text-xl font-bold text-neutral-800">Resumen de práctica</h1>
-        <p className="text-sm text-neutral-500">Metas y progreso de cada hijo — últimos {WINDOW_DAYS} días.</p>
+        <h1 className="text-xl font-bold text-neutral-800">Practice summary</h1>
+        <p className="text-sm text-neutral-500">Goals and progress for each child — last {WINDOW_DAYS} days.</p>
       </div>
 
       {data.children.length === 0 ? (
         <EmptyState
-          title="Aún no hay hijos configurados"
-          hint="Ve a la pestaña “Niños” para agregarlos."
+          title="No kids set up yet"
+          hint="Go to the “Kids” tab to add them."
         />
       ) : (
         data.children.map((cs) => <ChildCard key={cs.child.id} summary={cs} />)
@@ -52,7 +52,7 @@ function ChildCard({ summary }: { summary: ChildSummary }) {
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-neutral-800">{daysPracticed}</p>
-          <p className="text-xs text-neutral-500">días con práctica</p>
+          <p className="text-xs text-neutral-500">days practiced</p>
         </div>
       </div>
 
@@ -60,7 +60,7 @@ function ChildCard({ summary }: { summary: ChildSummary }) {
 
       {recent.length === 0 ? (
         <p className="rounded-xl bg-neutral-50 px-3 py-4 text-center text-sm text-neutral-400">
-          Sin prácticas registradas todavía.
+          No practices logged yet.
         </p>
       ) : (
         <div className="space-y-2">
@@ -78,7 +78,7 @@ function ConsistencyStrip({ sessions, dot }: { sessions: Session[]; dot: string 
   const practiced = new Set(sessions.map((s) => s.date));
   const days: { iso: string; label: string }[] = [];
   const [y, m, d] = todayISO().split("-").map(Number);
-  const names = ["D", "L", "M", "M", "J", "V", "S"];
+  const names = ["S", "M", "T", "W", "T", "F", "S"];
   for (let i = 6; i >= 0; i--) {
     const date = new Date(y, m - 1, d - i);
     const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -106,14 +106,14 @@ function SummaryRow({ session }: { session: Session }) {
       </div>
       <div className="space-y-1 text-sm">
         <Line done={session.exercisesDone} icon={<Dumbbell size={14} />}>
-          Ejercicios{session.exercisesNote ? `: ${session.exercisesNote}` : ""}
+          Exercises{session.exercisesNote ? `: ${session.exercisesNote}` : ""}
         </Line>
         <Line done={session.churchDone} icon={<Church size={14} />}>
-          Iglesia: {session.churchSong || <span className="text-neutral-400">sin nombre</span>}
+          Church: {session.churchSong || <span className="text-neutral-400">no name</span>}
         </Line>
         <Line done={session.newSongGoalMet} icon={<Music4 size={14} />}>
-          Nueva{session.newSong ? ` (${session.newSong})` : ""}:{" "}
-          {session.newSongGoal || <span className="text-neutral-400">sin meta</span>}
+          New{session.newSong ? ` (${session.newSong})` : ""}:{" "}
+          {session.newSongGoal || <span className="text-neutral-400">no goal</span>}
         </Line>
       </div>
     </div>

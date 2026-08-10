@@ -24,9 +24,9 @@ export default function ChildToday({ child }: { child: Child }) {
     <div className="space-y-4">
       <div className="rounded-3xl bg-gradient-to-br from-teal-500 to-teal-600 p-5 text-white">
         <p className="text-sm text-teal-100">{formatDate(todayISO())}</p>
-        <h1 className="mt-0.5 text-2xl font-bold">Hola, {child.name} 👋</h1>
+        <h1 className="mt-0.5 text-2xl font-bold">Hi, {child.name} 👋</h1>
         <p className="mt-1 text-sm text-teal-50">
-          Enfócate en tus metas de hoy — el tiempo es lo de menos.
+          Focus on today's goals — the clock matters least.
         </p>
       </div>
 
@@ -34,8 +34,8 @@ export default function ChildToday({ child }: { child: Child }) {
         <Spinner />
       ) : sessions.length === 0 ? (
         <EmptyState
-          title="Aún no has planeado la práctica de hoy"
-          hint="Toca “Planear práctica” para escribir tus metas del día."
+          title="You haven't planned today's practice yet"
+          hint="Tap “Plan practice” to write your goals for the day."
         />
       ) : (
         <div className="space-y-4">
@@ -46,11 +46,11 @@ export default function ChildToday({ child }: { child: Child }) {
       )}
 
       <Button className="w-full" onClick={() => setForm({ open: true, edit: null })}>
-        <Plus size={18} /> Planear práctica
+        <Plus size={18} /> Plan practice
       </Button>
 
       <p className="flex items-center justify-center gap-1.5 pt-1 text-center text-xs text-neutral-400">
-        <Sparkles size={13} /> Cada práctica: ejercicios · canción de iglesia · canción nueva
+        <Sparkles size={13} /> Each practice: exercises · church song · new song
       </p>
 
       {form.open && (

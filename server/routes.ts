@@ -16,7 +16,7 @@ const h =
   (req: Request, res: Response) => {
     fn(req, res).catch((err) => {
       console.error(err);
-      if (!res.headersSent) res.status(500).json({ error: "Error del servidor" });
+      if (!res.headersSent) res.status(500).json({ error: "Server error" });
     });
   };
 
@@ -43,7 +43,7 @@ api.post(
   h(async (req, res) => {
     const { name, instrument = "", color = "teal" } = req.body ?? {};
     if (!name || !String(name).trim()) {
-      res.status(400).json({ error: "El nombre es obligatorio" });
+      res.status(400).json({ error: "Name is required" });
       return;
     }
     const [row] = await query(
@@ -70,7 +70,7 @@ api.patch(
       [req.params.id, name ?? null, instrument ?? null, color ?? null],
     );
     if (!row) {
-      res.status(404).json({ error: "No encontrado" });
+      res.status(404).json({ error: "Not found" });
       return;
     }
     res.json(row);
@@ -133,11 +133,11 @@ api.post(
   h(async (req, res) => {
     const b = req.body ?? {};
     if (!b.childId) {
-      res.status(400).json({ error: "Falta indicar el niño" });
+      res.status(400).json({ error: "Please select a child" });
       return;
     }
     if (!b.date) {
-      res.status(400).json({ error: "Falta la fecha de práctica" });
+      res.status(400).json({ error: "Practice date is required" });
       return;
     }
     const [row] = await query(
@@ -201,7 +201,7 @@ api.patch(
       ],
     );
     if (!row) {
-      res.status(404).json({ error: "No encontrado" });
+      res.status(404).json({ error: "Not found" });
       return;
     }
     res.json(row);

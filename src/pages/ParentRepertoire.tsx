@@ -33,8 +33,8 @@ export default function ParentRepertoire() {
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
         <div>
-          <h1 className="text-xl font-bold text-neutral-800">Repertorio</h1>
-          <p className="text-sm text-neutral-500">Canciones que los niños y la banda pueden elegir.</p>
+          <h1 className="text-xl font-bold text-neutral-800">Repertoire</h1>
+          <p className="text-sm text-neutral-500">Songs kids and the band can choose from.</p>
         </div>
         <Button onClick={() => setEditing("new")} className="px-3">
           <Plus size={18} />
@@ -46,7 +46,7 @@ export default function ParentRepertoire() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar canción…"
+          placeholder="Search song…"
           className="flex-1 bg-transparent py-2.5 text-sm outline-none"
         />
       </div>
@@ -56,8 +56,8 @@ export default function ParentRepertoire() {
         <Spinner />
       ) : songs.length === 0 ? (
         <EmptyState
-          title={q || tag ? "Ninguna canción coincide" : "Aún no hay canciones"}
-          hint={q || tag ? undefined : "Toca + para agregar la primera."}
+          title={q || tag ? "No songs match" : "No songs yet"}
+          hint={q || tag ? undefined : "Tap + to add the first one."}
         />
       ) : (
         songs.map((s) => (
@@ -76,7 +76,7 @@ export default function ParentRepertoire() {
               <button
                 type="button"
                 onClick={async () => {
-                  if (confirm(`¿Eliminar “${s.title}” del repertorio?`)) {
+                  if (confirm(`Remove “${s.title}” from the repertoire?`)) {
                     await api.deleteSong(s.id);
                     refresh();
                   }
@@ -124,7 +124,7 @@ function SongEditor({
 
   async function save() {
     if (!title.trim()) {
-      setError("El nombre es obligatorio");
+      setError("Name is required");
       return;
     }
     setSaving(true);
@@ -134,7 +134,7 @@ function SongEditor({
       else await api.createSong({ title: title.trim(), tags, notes });
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(e instanceof Error ? e.message : "Couldn't save");
       setSaving(false);
     }
   }
@@ -143,29 +143,29 @@ function SongEditor({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-neutral-50 p-4 sm:rounded-3xl">
         <h2 className="mb-3 text-lg font-bold text-neutral-800">
-          {song ? "Editar canción" : "Nueva canción"}
+          {song ? "Edit song" : "New song"}
         </h2>
         <div className="space-y-3">
           <div>
-            <Label>Nombre</Label>
-            <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Grande es tu fidelidad" />
+            <Label>Name</Label>
+            <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Great Is Thy Faithfulness" />
           </div>
           <div>
-            <Label>Temas / tags</Label>
+            <Label>Themes / tags</Label>
             <TagInput value={tags} onChange={setTags} suggestions={suggestions} />
-            <p className="mt-1 text-xs text-neutral-400">Ej. adoración, gratitud, navidad, comunión…</p>
+            <p className="mt-1 text-xs text-neutral-400">e.g. worship, gratitude, Christmas, communion…</p>
           </div>
           <div>
-            <Label>Notas (opcional)</Label>
-            <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Tono, autor, enlace…" />
+            <Label>Notes (optional)</Label>
+            <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Key, author, link…" />
           </div>
           {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
           <div className="flex gap-3 pt-1">
             <Button variant="ghost" className="flex-1" onClick={onClose}>
-              Cancelar
+              Cancel
             </Button>
             <Button className="flex-1" onClick={save} disabled={saving}>
-              {saving ? "Guardando…" : "Guardar"}
+              {saving ? "Saving…" : "Save"}
             </Button>
           </div>
         </div>

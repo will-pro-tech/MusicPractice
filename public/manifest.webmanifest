@@ -1,7 +1,7 @@
 {
-  "name": "Mi Práctica Musical",
-  "short_name": "Mi Práctica",
-  "description": "Registro diario de práctica musical para niños y padres.",
+  "name": "My Music Practice",
+  "short_name": "My Practice",
+  "description": "Daily music practice tracker for kids and parents.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

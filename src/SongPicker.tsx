@@ -13,7 +13,7 @@ import { TagFilter, TagChips } from "./tags";
 export default function SongPicker({
   value,
   onChange,
-  placeholder = "Elegir canción…",
+  placeholder = "Choose a song…",
   accent = "text-amber-600",
 }: {
   value: string;
@@ -91,7 +91,7 @@ function PickerSheet({
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center">
       <div className="flex max-h-[88vh] w-full max-w-md flex-col rounded-t-3xl bg-neutral-50 sm:rounded-3xl">
         <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
-          <h3 className="font-bold text-neutral-800">Elegir del repertorio</h3>
+          <h3 className="font-bold text-neutral-800">Choose from repertoire</h3>
           <button type="button" onClick={onClose} className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-200">
             <X size={20} />
           </button>
@@ -103,7 +103,7 @@ function PickerSheet({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por nombre…"
+              placeholder="Search by name…"
               className="flex-1 bg-transparent py-2.5 text-sm outline-none"
             />
           </div>
@@ -112,10 +112,10 @@ function PickerSheet({
 
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">
           {songs === null ? (
-            <p className="py-6 text-center text-sm text-neutral-400">Cargando…</p>
+            <p className="py-6 text-center text-sm text-neutral-400">Loading…</p>
           ) : songs.length === 0 ? (
             <p className="py-6 text-center text-sm text-neutral-400">
-              No hay canciones {q || tag ? "que coincidan" : "todavía"}. Puedes escribir una abajo.
+              No songs {q || tag ? "match" : "yet"}. You can type one below.
             </p>
           ) : (
             songs.map((s) => (
@@ -154,7 +154,7 @@ function FreeText({ onUse }: { onUse: (title: string) => void }) {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="…o escribe otra canción"
+          placeholder="…or type another song"
           className="flex-1 rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-500"
         />
         <button
@@ -163,7 +163,7 @@ function FreeText({ onUse }: { onUse: (title: string) => void }) {
           onClick={() => onUse(text.trim())}
           className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-teal-300"
         >
-          Usar
+          Use
         </button>
       </div>
     </div>

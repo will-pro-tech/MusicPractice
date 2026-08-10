@@ -19,8 +19,8 @@ export default function ParentChildren() {
   return (
     <div className="space-y-4">
       <div className="px-1">
-        <h1 className="text-xl font-bold text-neutral-800">Niños</h1>
-        <p className="text-sm text-neutral-500">Agrega a cada hijo y su instrumento.</p>
+        <h1 className="text-xl font-bold text-neutral-800">Kids</h1>
+        <p className="text-sm text-neutral-500">Add each child and their instrument.</p>
       </div>
 
       {children === null ? (
@@ -28,7 +28,7 @@ export default function ParentChildren() {
       ) : (
         <>
           {children.length === 0 && !adding && (
-            <EmptyState title="Todavía no hay ningún niño" hint="Toca “Agregar niño” para empezar." />
+            <EmptyState title="No kids yet" hint="Tap “Add child” to get started." />
           )}
           {children.map((c) => (
             <ChildRow key={c.id} child={c} onChanged={load} />
@@ -47,7 +47,7 @@ export default function ParentChildren() {
         />
       ) : (
         <Button className="w-full" onClick={() => setAdding(true)}>
-          <Plus size={18} /> Agregar niño
+          <Plus size={18} /> Add child
         </Button>
       )}
     </div>
@@ -79,12 +79,12 @@ function ChildRow({ child, onChanged }: { child: Child; onChanged: () => void })
       </div>
       <button type="button" className="flex-1 text-left" onClick={() => setEditing(true)}>
         <p className="font-semibold text-neutral-800">{child.name}</p>
-        <p className="text-sm text-neutral-500">{child.instrument || "Sin instrumento"}</p>
+        <p className="text-sm text-neutral-500">{child.instrument || "No instrument"}</p>
       </button>
       <button
         type="button"
         onClick={async () => {
-          if (confirm(`¿Eliminar a ${child.name} y todas sus prácticas?`)) {
+          if (confirm(`Delete ${child.name} and all their practices?`)) {
             await api.deleteChild(child.id);
             onChanged();
           }
@@ -114,7 +114,7 @@ function ChildEditor({
 
   async function submit() {
     if (!name.trim()) {
-      setError("El nombre es obligatorio");
+      setError("Name is required");
       return;
     }
     setSaving(true);
@@ -122,7 +122,7 @@ function ChildEditor({
     try {
       await onSave({ name: name.trim(), instrument: instrument.trim(), color });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(e instanceof Error ? e.message : "Couldn't save");
       setSaving(false);
     }
   }
@@ -130,12 +130,12 @@ function ChildEditor({
   return (
     <Card className="space-y-3">
       <div>
-        <Label>Nombre</Label>
-        <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Sofía" />
+        <Label>Name</Label>
+        <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sophia" />
       </div>
       <div>
-        <Label>Instrumento</Label>
-        <TextInput value={instrument} onChange={(e) => setInstrument(e.target.value)} placeholder="Ej. Violín" />
+        <Label>Instrument</Label>
+        <TextInput value={instrument} onChange={(e) => setInstrument(e.target.value)} placeholder="e.g. Violin" />
       </div>
       <div>
         <Label>Color</Label>
@@ -157,10 +157,10 @@ function ChildEditor({
       {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
       <div className="flex gap-3">
         <Button variant="ghost" className="flex-1" onClick={onCancel}>
-          Cancelar
+          Cancel
         </Button>
         <Button className="flex-1" onClick={submit} disabled={saving}>
-          {saving ? "Guardando…" : "Guardar"}
+          {saving ? "Saving…" : "Save"}
         </Button>
       </div>
     </Card>

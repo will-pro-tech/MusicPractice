@@ -11,34 +11,34 @@ export function todayISO(): string {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
-const WEEKDAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
-  "ene", "feb", "mar", "abr", "may", "jun",
-  "jul", "ago", "sep", "oct", "nov", "dic",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-/** "vie 8 ago" — parses a YYYY-MM-DD string as a local date. */
+/** "Fri Aug 8" — parses a YYYY-MM-DD string as a local date. */
 export function formatDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   const date = new Date(y, m - 1, d);
-  return `${WEEKDAYS[date.getDay()]} ${d} ${MONTHS[m - 1]}`;
+  return `${WEEKDAYS[date.getDay()]} ${MONTHS[m - 1]} ${d}`;
 }
 
 export function relativeDay(iso: string): string | null {
   const today = todayISO();
-  if (iso === today) return "Hoy";
+  if (iso === today) return "Today";
   const [y, m, d] = today.split("-").map(Number);
   const yest = new Date(y, m - 1, d - 1);
   const yestISO = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, "0")}-${String(yest.getDate()).padStart(2, "0")}`;
-  if (iso === yestISO) return "Ayer";
+  if (iso === yestISO) return "Yesterday";
   return null;
 }
 
-/** 24h "HH:MM" → "9:30 a. m." */
+/** 24h "HH:MM" → "9:30 AM" */
 export function formatTime(time: string | null): string {
   if (!time) return "";
   const [h, m] = time.split(":").map(Number);
-  const period = h < 12 ? "a. m." : "p. m.";
+  const period = h < 12 ? "AM" : "PM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }

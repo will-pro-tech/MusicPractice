@@ -21,8 +21,8 @@ export default function ParentServices() {
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
         <div>
-          <h1 className="text-xl font-bold text-neutral-800">Domingos</h1>
-          <p className="text-sm text-neutral-500">Planifica las canciones de cada servicio por tema.</p>
+          <h1 className="text-xl font-bold text-neutral-800">Sundays</h1>
+          <p className="text-sm text-neutral-500">Plan each service's songs by theme.</p>
         </div>
         <Button onClick={() => setEditing("new")} className="px-3">
           <Plus size={18} />
@@ -32,7 +32,7 @@ export default function ParentServices() {
       {services === null ? (
         <Spinner />
       ) : services.length === 0 ? (
-        <EmptyState title="Aún no hay servicios planificados" hint="Toca + para planificar un domingo." />
+        <EmptyState title="No services planned yet" hint="Tap + to plan a Sunday." />
       ) : (
         services.map((s) => (
           <Card key={s.id} className="space-y-2">
@@ -43,7 +43,7 @@ export default function ParentServices() {
                 </span>
                 <div>
                   <p className="font-bold text-neutral-800">{formatDate(s.date)}</p>
-                  {s.theme && <p className="text-sm text-teal-700">Tema: {s.theme}</p>}
+                  {s.theme && <p className="text-sm text-teal-700">Theme: {s.theme}</p>}
                 </div>
               </div>
               <div className="flex gap-1">
@@ -53,7 +53,7 @@ export default function ParentServices() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (confirm("¿Eliminar este servicio?")) {
+                    if (confirm("Delete this service?")) {
                       await api.deleteService(s.id);
                       load();
                     }
@@ -66,7 +66,7 @@ export default function ParentServices() {
             </div>
 
             {s.songs.length === 0 ? (
-              <p className="rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-400">Sin canciones aún.</p>
+              <p className="rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-400">No songs yet.</p>
             ) : (
               <ol className="space-y-1.5">
                 {s.songs.map((song, i) => (
@@ -148,7 +148,7 @@ function ServiceEditor({
       else await api.createService(payload);
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(e instanceof Error ? e.message : "Couldn't save");
       setSaving(false);
     }
   }
@@ -157,27 +157,27 @@ function ServiceEditor({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="flex max-h-[92vh] w-full max-w-md flex-col rounded-t-3xl bg-neutral-50 sm:rounded-3xl">
         <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
-          <h2 className="text-lg font-bold text-neutral-800">{service ? "Editar servicio" : "Planificar domingo"}</h2>
+          <h2 className="text-lg font-bold text-neutral-800">{service ? "Edit service" : "Plan Sunday"}</h2>
           <button type="button" onClick={onClose} className="text-sm font-medium text-neutral-500">
-            Cerrar
+            Close
           </button>
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Fecha</Label>
+              <Label>Date</Label>
               <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div>
-              <Label>Tema</Label>
-              <TextInput value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="Ej. Gratitud" />
+              <Label>Theme</Label>
+              <TextInput value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="e.g. Gratitude" />
             </div>
           </div>
 
           {selected.length > 0 && (
             <div>
-              <Label>Orden del servicio ({selected.length})</Label>
+              <Label>Service order ({selected.length})</Label>
               <ol className="space-y-1.5">
                 {selected.map((s, i) => (
                   <li key={s.id} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-black/5">
@@ -193,13 +193,13 @@ function ServiceEditor({
           )}
 
           <div>
-            <Label>Agregar del repertorio</Label>
+            <Label>Add from repertoire</Label>
             <SongMultiSelect selectedIds={selected.map((s) => s.id)} onToggle={toggle} />
           </div>
 
           <div>
-            <Label>Notas (opcional)</Label>
-            <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Indicaciones, tonos…" />
+            <Label>Notes (optional)</Label>
+            <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Directions, keys…" />
           </div>
 
           {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
@@ -207,10 +207,10 @@ function ServiceEditor({
 
         <div className="flex gap-3 border-t border-black/5 p-4">
           <Button variant="ghost" className="flex-1" onClick={onClose}>
-            Cancelar
+            Cancel
           </Button>
           <Button className="flex-1" onClick={save} disabled={saving}>
-            {saving ? "Guardando…" : "Guardar servicio"}
+            {saving ? "Saving…" : "Save service"}
           </Button>
         </div>
       </div>
@@ -248,17 +248,17 @@ function SongMultiSelect({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nombre…"
+          placeholder="Search by name…"
           className="flex-1 bg-transparent py-2 text-sm outline-none"
         />
       </div>
       <TagFilter tags={allTags} active={tag} onSelect={setTag} />
       <div className="max-h-64 space-y-1.5 overflow-y-auto">
         {songs === null ? (
-          <p className="py-4 text-center text-sm text-neutral-400">Cargando…</p>
+          <p className="py-4 text-center text-sm text-neutral-400">Loading…</p>
         ) : songs.length === 0 ? (
           <p className="py-4 text-center text-sm text-neutral-400">
-            No hay canciones. Agrégalas en la pestaña Repertorio.
+            No songs. Add them in the Repertoire tab.
           </p>
         ) : (
           songs.map((s) => {

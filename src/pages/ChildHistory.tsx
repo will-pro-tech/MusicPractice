@@ -22,12 +22,12 @@ export default function ChildHistory({ child }: { child: Child }) {
 
   return (
     <div className="space-y-3">
-      <h1 className="px-1 text-xl font-bold text-neutral-800">Mi historial</h1>
+      <h1 className="px-1 text-xl font-bold text-neutral-800">My history</h1>
 
       {sessions === null ? (
         <Spinner />
       ) : sessions.length === 0 ? (
-        <EmptyState title="Todavía no hay prácticas registradas" />
+        <EmptyState title="No practices logged yet" />
       ) : (
         <div className="space-y-2">
           {sessions.map((s) => (
@@ -86,11 +86,11 @@ function HistoryRow({
         {session.time && <p className="text-xs text-neutral-400">{formatTime(session.time)}</p>}
       </div>
       <div className="min-w-0 flex-1 space-y-0.5">
-        <Mini done={session.churchDone} icon={<Church size={12} />} text={session.churchSong || "Canción de iglesia"} />
+        <Mini done={session.churchDone} icon={<Church size={12} />} text={session.churchSong || "Church song"} />
         <Mini
           done={session.newSongGoalMet}
           icon={<Music4 size={12} />}
-          text={session.newSong || session.newSongGoal || "Canción nueva"}
+          text={session.newSong || session.newSongGoal || "New song"}
         />
       </div>
       <StatusDots session={session} />
@@ -110,9 +110,9 @@ function Mini({ done, icon, text }: { done: boolean; icon: React.ReactNode; text
 
 function StatusDots({ session }: { session: Session }) {
   const parts = [
-    { on: session.exercisesDone, title: "Ejercicios" },
-    { on: session.churchDone, title: "Iglesia" },
-    { on: session.newSongGoalMet, title: "Meta canción nueva" },
+    { on: session.exercisesDone, title: "Exercises" },
+    { on: session.churchDone, title: "Church" },
+    { on: session.newSongGoalMet, title: "New song goal" },
   ];
   return (
     <div className="flex shrink-0 gap-1" aria-hidden>

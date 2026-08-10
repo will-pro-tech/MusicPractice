@@ -11,7 +11,7 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
-    let message = "Ocurrió un error";
+    let message = "Something went wrong";
     try {
       const data = await res.json();
       if (data?.error) message = data.error;

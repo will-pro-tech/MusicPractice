@@ -48,7 +48,7 @@ export default function SessionForm({ child, initial, onClose, onSaved }: Props)
       }
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(e instanceof Error ? e.message : "Couldn't save");
       setSaving(false);
     }
   }
@@ -58,7 +58,7 @@ export default function SessionForm({ child, initial, onClose, onSaved }: Props)
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-neutral-50 sm:rounded-3xl">
         <div className="sticky top-0 flex items-center justify-between border-b border-black/5 bg-neutral-50/95 px-4 py-3 backdrop-blur">
           <h2 className="text-lg font-bold text-neutral-800">
-            {initial ? "Editar práctica" : "Planear práctica"}
+            {initial ? "Edit practice" : "Plan practice"}
           </h2>
           <button type="button" onClick={onClose} className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-200">
             <X size={20} />
@@ -68,21 +68,21 @@ export default function SessionForm({ child, initial, onClose, onSaved }: Props)
         <div className="space-y-4 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Día</Label>
+              <Label>Day</Label>
               <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div>
-              <Label>Hora</Label>
+              <Label>Time</Label>
               <TextInput type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
           </div>
 
           <div className="rounded-2xl bg-white p-3 ring-1 ring-black/5">
             <div className="mb-2 flex items-center gap-2 font-semibold text-teal-700">
-              <Dumbbell size={18} /> Ejercicios
+              <Dumbbell size={18} /> Exercises
             </div>
             <TextInput
-              placeholder="Ej. escalas, técnica, arpegios…"
+              placeholder="e.g. scales, technique, arpeggios…"
               value={exercisesNote}
               onChange={(e) => setExercisesNote(e.target.value)}
             />
@@ -90,33 +90,33 @@ export default function SessionForm({ child, initial, onClose, onSaved }: Props)
 
           <div className="rounded-2xl bg-white p-3 ring-1 ring-black/5">
             <div className="mb-2 flex items-center gap-2 font-semibold text-amber-700">
-              <Church size={18} /> Canción del repertorio (iglesia)
+              <Church size={18} /> Church repertoire song
             </div>
-            <Label>Nombre de la canción</Label>
+            <Label>Song name</Label>
             <SongPicker
               value={churchSong}
               onChange={setChurchSong}
-              placeholder="Elegir del repertorio…"
+              placeholder="Choose from repertoire…"
               accent="text-amber-600"
             />
           </div>
 
           <div className="rounded-2xl bg-white p-3 ring-1 ring-black/5">
             <div className="mb-2 flex items-center gap-2 font-semibold text-violet-700">
-              <Music4 size={18} /> Canción nueva
+              <Music4 size={18} /> New song
             </div>
-            <Label>Nombre de la canción (opcional)</Label>
+            <Label>Song name (optional)</Label>
             <SongPicker
               value={newSong}
               onChange={setNewSong}
-              placeholder="Elegir o escribir canción…"
+              placeholder="Choose or type a song…"
               accent="text-violet-600"
             />
             <div className="mt-3">
-              <Label>Meta específica de hoy</Label>
+              <Label>Today's specific goal</Label>
               <TextArea
                 rows={2}
-                placeholder="Ej. dominar las dos primeras líneas de la partitura"
+                placeholder="e.g. master the first two lines of the sheet music"
                 value={newSongGoal}
                 onChange={(e) => setNewSongGoal(e.target.value)}
               />
@@ -124,10 +124,10 @@ export default function SessionForm({ child, initial, onClose, onSaved }: Props)
           </div>
 
           <div>
-            <Label>Notas (opcional)</Label>
+            <Label>Notes (optional)</Label>
             <TextArea
               rows={2}
-              placeholder="Algo que quieras recordar…"
+              placeholder="Anything you want to remember…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -137,10 +137,10 @@ export default function SessionForm({ child, initial, onClose, onSaved }: Props)
 
           <div className="flex gap-3 pb-2">
             <Button variant="ghost" className="flex-1" onClick={onClose}>
-              Cancelar
+              Cancel
             </Button>
             <Button className="flex-1" onClick={save} disabled={saving}>
-              {saving ? "Guardando…" : "Guardar"}
+              {saving ? "Saving…" : "Save"}
             </Button>
           </div>
         </div>
