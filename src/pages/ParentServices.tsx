@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Check, GripVertical, CalendarDays } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Check, GripVertical, CalendarDays, StickyNote, ChevronUp, ChevronDown } from "lucide-react";
 import type { Service, Song } from "../types";
 import { api } from "../api";
 import { formatDate, todayISO } from "../lib";
@@ -84,7 +84,11 @@ export default function ParentServices() {
                 ))}
               </ol>
             )}
-            {s.notes && <p className="text-sm text-neutral-500">📝 {s.notes}</p>}
+            {s.notes && (
+              <p className="flex items-start gap-1.5 text-sm text-neutral-500">
+                <StickyNote size={13} className="mt-0.5 shrink-0" /> {s.notes}
+              </p>
+            )}
           </Card>
         ))
       )}
@@ -183,8 +187,12 @@ function ServiceEditor({
                   <li key={s.id} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-black/5">
                     <span className="text-sm font-bold text-neutral-400">{i + 1}.</span>
                     <span className="flex-1 font-medium text-neutral-800">{s.title}</span>
-                    <button type="button" onClick={() => move(s.id, -1)} disabled={i === 0} className="p-1 text-neutral-400 disabled:opacity-30">▲</button>
-                    <button type="button" onClick={() => move(s.id, 1)} disabled={i === selected.length - 1} className="p-1 text-neutral-400 disabled:opacity-30">▼</button>
+                    <button type="button" onClick={() => move(s.id, -1)} disabled={i === 0} aria-label="Move up" className="p-1 text-neutral-400 disabled:opacity-30">
+                      <ChevronUp size={16} />
+                    </button>
+                    <button type="button" onClick={() => move(s.id, 1)} disabled={i === selected.length - 1} aria-label="Move down" className="p-1 text-neutral-400 disabled:opacity-30">
+                      <ChevronDown size={16} />
+                    </button>
                     <GripVertical size={16} className="text-neutral-300" />
                   </li>
                 ))}

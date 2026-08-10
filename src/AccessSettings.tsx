@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, KeyRound } from "lucide-react";
+import { X, KeyRound, Check } from "lucide-react";
 import { api, APP_CODE_KEY } from "./api";
 import type { AuthStatus } from "./types";
 import { Button, Label, TextInput } from "./ui";
@@ -98,7 +98,11 @@ export function AccessSettings({
           </div>
 
           {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
-          {saved && <p className="text-sm font-medium text-teal-700">Saved ✓</p>}
+          {saved && (
+            <p className="flex items-center gap-1 text-sm font-medium text-teal-700">
+              <Check size={15} /> Saved
+            </p>
+          )}
 
           <div className="flex gap-3 pb-2">
             <Button variant="ghost" className="flex-1" onClick={onClose}>

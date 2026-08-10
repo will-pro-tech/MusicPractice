@@ -24,7 +24,7 @@ export default function ChildToday({ child }: { child: Child }) {
     <div className="space-y-4">
       <div className="rounded-3xl bg-gradient-to-br from-teal-500 to-teal-600 p-5 text-white">
         <p className="text-sm text-teal-100">{formatDate(todayISO())}</p>
-        <h1 className="mt-0.5 text-2xl font-bold">Hi, {child.name} 👋</h1>
+        <h1 className="mt-0.5 text-2xl font-bold">Hi, {child.name}</h1>
         <p className="mt-1 text-sm text-teal-50">
           Focus on today's goals — the clock matters least.
         </p>

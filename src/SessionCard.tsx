@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dumbbell, Church, Music4, Pencil, Trash2, Clock } from "lucide-react";
+import { Dumbbell, Church, Music, Music4, StickyNote, Pencil, Trash2, Clock } from "lucide-react";
 import type { Session } from "./types";
 import { api } from "./api";
 import { formatDate, formatTime, relativeDay } from "./lib";
@@ -72,7 +72,9 @@ export default function SessionCard({ session, onChanged, onEdit, showDate }: Pr
         title="Church song"
       >
         {session.churchSong ? (
-          <span className="font-medium text-neutral-700">🎵 {session.churchSong}</span>
+          <span className="inline-flex items-center gap-1.5 font-medium text-neutral-700">
+            <Music size={13} className="shrink-0 text-amber-600" /> {session.churchSong}
+          </span>
         ) : (
           <span className="text-neutral-400">No song name yet</span>
         )}
@@ -85,7 +87,11 @@ export default function SessionCard({ session, onChanged, onEdit, showDate }: Pr
         accent="text-violet-600"
         title="New song — goal met"
       >
-        {session.newSong && <div className="font-medium text-neutral-700">🎼 {session.newSong}</div>}
+        {session.newSong && (
+          <div className="flex items-center gap-1.5 font-medium text-neutral-700">
+            <Music4 size={13} className="shrink-0 text-violet-600" /> {session.newSong}
+          </div>
+        )}
         {session.newSongGoal ? (
           <div className="mt-0.5">
             <span className="text-neutral-400">Goal: </span>
@@ -97,7 +103,9 @@ export default function SessionCard({ session, onChanged, onEdit, showDate }: Pr
       </CheckRow>
 
       {session.notes && (
-        <p className="px-2 pt-1 text-sm text-neutral-500">📝 {session.notes}</p>
+        <p className="flex items-start gap-1.5 px-2 pt-1 text-sm text-neutral-500">
+          <StickyNote size={13} className="mt-0.5 shrink-0" /> {session.notes}
+        </p>
       )}
     </div>
   );
