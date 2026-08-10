@@ -1,0 +1,23 @@
+modules = ["nodejs-24", "postgresql-16"]
+
+run = "pnpm run dev"
+
+[nix]
+channel = "stable-25_05"
+
+# Local dev preview (Run button). The server listens on 8081 and Replit maps
+# it to the public port 80.
+[[ports]]
+localPort = 8081
+externalPort = 80
+
+[env]
+PORT = "8081"
+
+# Published app. Builds the client + server, then runs the bundled server.
+# `pnpm run start` sets NODE_ENV=production so the server serves the built
+# files (instead of the Vite dev middleware). Replit injects DATABASE_URL.
+[deployment]
+deploymentTarget = "autoscale"
+build = ["pnpm", "run", "build"]
+run = ["pnpm", "run", "start"]
