@@ -3,12 +3,9 @@ import { randomUUID } from "node:crypto";
 import { query } from "./db";
 import { songsRouter } from "./songs";
 import { servicesRouter } from "./services";
+import { authRouter, requireAppCode } from "./auth";
 
 export const api = Router();
-
-// Repertoire (songs + tags) and Sunday service planning.
-api.use(songsRouter);
-api.use(servicesRouter);
 
 // Small wrapper so async handlers surface errors as clean 500s.
 const h =
@@ -20,9 +17,18 @@ const h =
     });
   };
 
+// --- Public routes (reachable even while the app is locked) ---
 api.get("/healthz", (_req, res) => {
   res.json({ ok: true });
 });
+api.use(authRouter);
+
+// --- Everything below requires the app access code (when one is set) ---
+api.use(requireAppCode);
+
+// Repertoire (songs + tags) and Sunday service planning.
+api.use(songsRouter);
+api.use(servicesRouter);
 
 /* ------------------------------- children ------------------------------- */
 

@@ -101,4 +101,15 @@ export async function initSchema(): Promise<void> {
   await query(
     `CREATE INDEX IF NOT EXISTS mp_service_songs_service_idx ON mp_service_songs (service_id);`,
   );
+
+  // Single-row settings: the access codes that gate the app. Stored as scrypt
+  // hashes (salt:hash), never in plain text. Null means "no code set yet".
+  await query(`
+    CREATE TABLE IF NOT EXISTS mp_settings (
+      id text PRIMARY KEY DEFAULT 'default',
+      app_code_hash text,
+      parent_code_hash text,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
 }

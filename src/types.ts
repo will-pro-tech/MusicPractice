@@ -59,4 +59,9 @@ export interface Service {
   songs: ServiceSong[];
 }
 
+export interface AuthStatus {
+  appCodeSet: boolean;
+  parentCodeSet: boolean;
+}
+
 export type Role = "child" | "parent";

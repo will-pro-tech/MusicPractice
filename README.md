@@ -76,9 +76,21 @@ pnpm run start          # NODE_ENV=production node dist/index.mjs
 | PATCH/DELETE | `/api/services/:id` | Edit (incl. `songIds`) / delete service |
 | GET | `/api/healthz` | Health check |
 
+## Access codes
+
+The app is protected by a shared **access code**:
+
+- On first launch you create the code. After that, everyone must enter it to
+  open the app — it is enforced on the server for every request (sent as the
+  `x-app-code` header), not just hidden in the UI. Codes are stored as scrypt
+  hashes, never in plain text.
+- An optional **parent code** protects the Parents section from the kids. Set or
+  change both codes from **Parents → ⚙ (Access codes)**.
+
+There is no per-user login: one family shares the data, and the Kid/Parents
+switch selects the view.
+
 ## Notes
 
-- **No login (MVP):** a single family shares the data; the Kid/Parents role is a
-  toggle. A passcode can be added later.
 - To ship it to the app stores (App Store / Google Play), it can be wrapped with
   Capacitor reusing this same code.
