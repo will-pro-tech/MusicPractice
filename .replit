@@ -5,11 +5,17 @@ run = "pnpm run dev"
 [nix]
 channel = "stable-25_05"
 
-# Local dev preview (Run button). The server listens on 8081 and Replit maps
-# it to the public port 80.
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
 [[ports]]
 localPort = 8081
 externalPort = 80
+
+[[ports]]
+localPort = 24678
+externalPort = 3000
 
 [env]
 PORT = "8081"
