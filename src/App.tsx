@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   CalendarCheck, History, BarChart3, Users, Music2, ListMusic, CalendarDays,
-  LogOut, ChevronDown, KeyRound,
+  LogOut, ChevronDown, KeyRound, HelpCircle,
 } from "lucide-react";
 import { useUser } from "./auth";
 import { api } from "./api";
@@ -33,6 +33,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>(isParent ? "summary" : "today");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
   const tabs = isParent ? PARENT_TABS : CHILD_TABS;
 
   return (
@@ -76,6 +77,13 @@ export default function App() {
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-100"
                   >
                     <KeyRound size={16} /> Change password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setShowRecovery(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+                  >
+                    <HelpCircle size={16} /> Recovery question
                   </button>
                   <button
                     type="button"
@@ -128,6 +136,54 @@ export default function App() {
       </nav>
 
       {showChangePw && <ChangePassword onClose={() => setShowChangePw(false)} />}
+      {showRecovery && <RecoveryQuestion onClose={() => setShowRecovery(false)} />}
+    </div>
+  );
+}
+
+function RecoveryQuestion({ onClose }: { onClose: () => void }) {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  async function submit() {
+    if (!question.trim() || !answer.trim()) return setMsg("Enter a question and an answer.");
+    setBusy(true);
+    setMsg(null);
+    try {
+      await api.setRecoveryQuestion(question.trim(), answer);
+      setOk(true);
+      setMsg("Recovery question saved.");
+      setTimeout(onClose, 900);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Couldn't save");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-6">
+      <div className="w-full max-w-sm rounded-3xl bg-neutral-50 p-5">
+        <h2 className="text-lg font-bold text-neutral-800">Recovery question</h2>
+        <p className="mt-1 text-sm text-neutral-500">Used to reset your password if you forget it.</p>
+        <div className="mt-4 space-y-3">
+          <div>
+            <Label>Question</Label>
+            <TextInput value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Your first instrument?" />
+          </div>
+          <div>
+            <Label>Answer</Label>
+            <TextInput value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Something you'll remember" />
+          </div>
+          {msg && <p className={cn("text-sm font-medium", ok ? "text-teal-700" : "text-rose-600")}>{msg}</p>}
+          <div className="flex gap-3">
+            <Button variant="ghost" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" onClick={submit} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

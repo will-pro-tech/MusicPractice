@@ -160,6 +160,11 @@ export function cleanUsername(input: unknown): string {
   return String(input ?? "").trim().toLowerCase();
 }
 
+// Recovery answers are matched case-insensitively and trimmed.
+function normalizeAnswer(a: unknown): string {
+  return String(a ?? "").trim().toLowerCase();
+}
+
 function validCredentials(username: string, password: string): string | null {
   if (username.length < 3) return "Username must be at least 3 characters";
   if (!/^[a-z0-9_.-]+$/.test(username)) return "Username can use letters, numbers, . _ - only";
@@ -201,10 +206,15 @@ authRouter.post(
     const name = String(displayName).trim();
     await query(`INSERT INTO mp_families (id, name) VALUES ($1, $2)`, [familyId, famName]);
     const userId = randomUUID();
+    const rq = typeof req.body?.recoveryQuestion === "string" ? req.body.recoveryQuestion.trim() : "";
+    const ra = typeof req.body?.recoveryAnswer === "string" ? req.body.recoveryAnswer : "";
+    const recoveryQuestion = rq || null;
+    const recoveryAnswerHash = rq && ra.trim() ? hashPassword(normalizeAnswer(ra)) : null;
     await query(
-      `INSERT INTO mp_users (id, family_id, role, username, password_hash, display_name)
-       VALUES ($1, $2, 'parent', $3, $4, $5)`,
-      [userId, familyId, username, hashPassword(password), name],
+      `INSERT INTO mp_users
+        (id, family_id, role, username, password_hash, display_name, recovery_question, recovery_answer_hash)
+       VALUES ($1, $2, 'parent', $3, $4, $5, $6, $7)`,
+      [userId, familyId, username, hashPassword(password), name, recoveryQuestion, recoveryAnswerHash],
     );
     await setSession(res, userId);
     res.status(201).json(
@@ -264,5 +274,63 @@ authRouter.post(
       return void res.status(403).json({ error: "Current password is wrong" });
     await query(`UPDATE mp_users SET password_hash = $2 WHERE id = $1`, [req.user!.id, hashPassword(next)]);
     res.json({ ok: true });
+  }),
+);
+
+// Set / update your own recovery question (while signed in).
+authRouter.post(
+  "/auth/recovery-question",
+  requireAuth,
+  h(async (req, res) => {
+    const question = String(req.body?.question ?? "").trim();
+    const answer = String(req.body?.answer ?? "");
+    if (!question || !answer.trim())
+      return void res.status(400).json({ error: "Both a question and an answer are required" });
+    await query(`UPDATE mp_users SET recovery_question = $2, recovery_answer_hash = $3 WHERE id = $1`, [
+      req.user!.id,
+      question,
+      hashPassword(normalizeAnswer(answer)),
+    ]);
+    res.json({ ok: true });
+  }),
+);
+
+// Public: the recovery question for a username (null if none is set).
+authRouter.get(
+  "/auth/recovery-question",
+  h(async (req, res) => {
+    const username = cleanUsername(req.query.username);
+    if (!username) return void res.json({ question: null });
+    const rows = await query<{ recovery_question: string | null; recovery_answer_hash: string | null }>(
+      `SELECT recovery_question, recovery_answer_hash FROM mp_users WHERE username = $1`,
+      [username],
+    );
+    const u = rows[0];
+    res.json({ question: u && u.recovery_answer_hash ? u.recovery_question : null });
+  }),
+);
+
+// Public: reset the password by answering the recovery question.
+authRouter.post(
+  "/auth/recover",
+  h(async (req, res) => {
+    const username = cleanUsername(req.body?.username);
+    const answer = normalizeAnswer(req.body?.answer);
+    const newPassword = String(req.body?.newPassword ?? "");
+    if (newPassword.length < 4)
+      return void res.status(400).json({ error: "New password must be at least 4 characters" });
+    const rows = await query<AuthUser & { recovery_answer_hash: string | null }>(
+      `SELECT u.id, u.family_id AS "familyId", f.name AS "familyName", u.role, u.username,
+              u.display_name AS "displayName", u.recovery_answer_hash
+       FROM mp_users u JOIN mp_families f ON f.id = u.family_id
+       WHERE u.username = $1`,
+      [username],
+    );
+    const u = rows[0];
+    if (!u || !u.recovery_answer_hash || !verifyPassword(answer, u.recovery_answer_hash))
+      return void res.status(403).json({ error: "That answer doesn't match" });
+    await query(`UPDATE mp_users SET password_hash = $2 WHERE id = $1`, [u.id, hashPassword(newPassword)]);
+    await setSession(res, u.id);
+    res.json(publicUser(u));
   }),
 );

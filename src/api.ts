@@ -48,13 +48,28 @@ export type NewSession = Omit<Session, "id" | "childId" | "createdAt" | "updated
 export const api = {
   // ---- auth ----
   me: () => request<User>("GET", "/api/auth/me"),
-  register: (data: { familyName: string; displayName: string; username: string; password: string }) =>
-    request<User>("POST", "/api/auth/register", data),
+  register: (data: {
+    familyName: string;
+    displayName: string;
+    username: string;
+    password: string;
+    recoveryQuestion?: string;
+    recoveryAnswer?: string;
+  }) => request<User>("POST", "/api/auth/register", data),
   login: (data: { username: string; password: string }) =>
     request<User>("POST", "/api/auth/login", data),
   logout: () => request<void>("POST", "/api/auth/logout"),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>("POST", "/api/auth/change-password", { currentPassword, newPassword }),
+  setRecoveryQuestion: (question: string, answer: string) =>
+    request<{ ok: true }>("POST", "/api/auth/recovery-question", { question, answer }),
+  getRecoveryQuestion: (username: string) =>
+    request<{ question: string | null }>(
+      "GET",
+      `/api/auth/recovery-question?username=${encodeURIComponent(username)}`,
+    ),
+  recover: (data: { username: string; answer: string; newPassword: string }) =>
+    request<User>("POST", "/api/auth/recover", data),
   getInvite: (code: string) => request<InvitePreview>("GET", `/api/invite/${encodeURIComponent(code)}`),
   acceptInvite: (code: string, data: { username: string; password: string }) =>
     request<User>("POST", `/api/invite/${encodeURIComponent(code)}/accept`, data),

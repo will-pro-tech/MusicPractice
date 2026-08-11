@@ -4,6 +4,7 @@ import type { Session } from "../types";
 import { api } from "../api";
 import { formatDate, formatTime, relativeDay, cn } from "../lib";
 import { EmptyState, Spinner } from "../ui";
+import { usePager, Pager } from "../pager";
 import SessionCard from "../SessionCard";
 import SessionForm from "../SessionForm";
 
@@ -20,6 +21,8 @@ export default function ChildHistory() {
     load();
   }, [load]);
 
+  const { page, setPage, pageCount, total, size, pageItems } = usePager(sessions, 25);
+
   return (
     <div className="space-y-3">
       <h1 className="px-1 text-xl font-bold text-neutral-800">My history</h1>
@@ -29,11 +32,14 @@ export default function ChildHistory() {
       ) : sessions.length === 0 ? (
         <EmptyState title="No practices logged yet" />
       ) : (
-        <div className="space-y-2">
-          {sessions.map((s) => (
-            <HistoryRow key={s.id} session={s} onChanged={load} onEdit={setEdit} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2">
+            {pageItems.map((s) => (
+              <HistoryRow key={s.id} session={s} onChanged={load} onEdit={setEdit} />
+            ))}
+          </div>
+          <Pager page={page} pageCount={pageCount} total={total} size={size} onPage={setPage} />
+        </>
       )}
 
       {edit && (

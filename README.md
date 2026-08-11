@@ -64,6 +64,10 @@ pnpm run start          # NODE_ENV=production node dist/index.mjs
 
 There's no email, so password recovery is handled inside the family:
 
+- **Forgot your password (self-service):** on the sign-in screen tap **“Forgot
+  password?”**, enter your username, answer your **security question**, and set a
+  new password. Set the question when you register, or anytime from the account
+  menu → **Recovery question**.
 - **Change your own password:** account menu (top-right) → **Change password**.
 - **A child forgot theirs:** a parent opens **Family → the child → Reset password**.
 - **An adult forgot theirs:** another adult opens **Family → Adults → 🔑** next to

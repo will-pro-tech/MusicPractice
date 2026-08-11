@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import type { Song } from "../types";
 import { api } from "../api";
 import { Button, EmptyState, Label, Spinner, TextArea, TextInput } from "../ui";
 import { TagFilter, TagInput } from "../tags";
+import { usePager, Pager } from "../pager";
 
 export default function ParentRepertoire() {
   const [songs, setSongs] = useState<Song[] | null>(null);
@@ -11,7 +12,6 @@ export default function ParentRepertoire() {
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string | null>(null);
   const [editing, setEditing] = useState<Song | "new" | null>(null);
-  const [page, setPage] = useState(0);
 
   const loadTags = useCallback(() => api.songTags().then(setAllTags), []);
   const load = useCallback(async () => {
@@ -24,10 +24,6 @@ export default function ParentRepertoire() {
   useEffect(() => {
     loadTags();
   }, [loadTags]);
-  // Back to the first page whenever the filter changes.
-  useEffect(() => {
-    setPage(0);
-  }, [q, tag]);
 
   function refresh() {
     load();
@@ -35,11 +31,7 @@ export default function ParentRepertoire() {
   }
 
   // Paginate in blocks so a long repertoire doesn't stretch the page.
-  const PAGE_SIZE = 25;
-  const total = songs?.length ?? 0;
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const current = Math.min(page, pageCount - 1);
-  const shown = songs ? songs.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE) : [];
+  const { page, setPage, pageCount, total, size, pageItems } = usePager(songs, 25, `${q}|${tag}`);
 
   return (
     <div className="space-y-3">
@@ -79,34 +71,11 @@ export default function ParentRepertoire() {
       ) : (
         <>
           <div className="space-y-2">
-            {shown.map((s) => (
+            {pageItems.map((s) => (
               <SongRow key={s.id} song={s} onEdit={() => setEditing(s)} onDeleted={refresh} />
             ))}
           </div>
-
-          {total > PAGE_SIZE && (
-            <div className="flex items-center justify-between px-1 pt-1">
-              <button
-                type="button"
-                onClick={() => { setPage(current - 1); window.scrollTo({ top: 0 }); }}
-                disabled={current === 0}
-                className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-neutral-600 ring-1 ring-black/10 disabled:opacity-40"
-              >
-                <ChevronLeft size={16} /> Prev
-              </button>
-              <span className="text-xs text-neutral-500">
-                {current * PAGE_SIZE + 1}–{Math.min((current + 1) * PAGE_SIZE, total)} of {total}
-              </span>
-              <button
-                type="button"
-                onClick={() => { setPage(current + 1); window.scrollTo({ top: 0 }); }}
-                disabled={current >= pageCount - 1}
-                className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-neutral-600 ring-1 ring-black/10 disabled:opacity-40"
-              >
-                Next <ChevronRight size={16} />
-              </button>
-            </div>
-          )}
+          <Pager page={page} pageCount={pageCount} total={total} size={size} onPage={setPage} />
         </>
       )}
 

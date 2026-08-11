@@ -5,6 +5,7 @@ import { api } from "../api";
 import { formatDate, todayISO } from "../lib";
 import { Button, Card, EmptyState, Label, Spinner, TextArea, TextInput } from "../ui";
 import { TagFilter, TagChips } from "../tags";
+import { usePager, Pager } from "../pager";
 
 export default function ParentServices() {
   const [services, setServices] = useState<Service[] | null>(null);
@@ -16,6 +17,8 @@ export default function ParentServices() {
   useEffect(() => {
     load();
   }, []);
+
+  const { page, setPage, pageCount, total, size, pageItems } = usePager(services, 25);
 
   return (
     <div className="space-y-4">
@@ -34,11 +37,14 @@ export default function ParentServices() {
       ) : services.length === 0 ? (
         <EmptyState title="No services planned yet" hint="Tap + to plan a Sunday." />
       ) : (
-        <div className="space-y-2">
-          {services.map((s) => (
-            <ServiceCard key={s.id} service={s} onEdit={() => setEditing(s)} onDeleted={load} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2">
+            {pageItems.map((s) => (
+              <ServiceCard key={s.id} service={s} onEdit={() => setEditing(s)} onDeleted={load} />
+            ))}
+          </div>
+          <Pager page={page} pageCount={pageCount} total={total} size={size} onPage={setPage} />
+        </>
       )}
 
       {editing && (

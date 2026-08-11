@@ -63,9 +63,13 @@ export async function initSchema(): Promise<void> {
       username text NOT NULL UNIQUE,
       password_hash text NOT NULL,
       display_name text NOT NULL,
+      recovery_question text,
+      recovery_answer_hash text,
       created_at timestamptz NOT NULL DEFAULT now()
     );
   `);
+  await query(`ALTER TABLE mp_users ADD COLUMN IF NOT EXISTS recovery_question text;`);
+  await query(`ALTER TABLE mp_users ADD COLUMN IF NOT EXISTS recovery_answer_hash text;`);
 
   // Child profiles (instrument, color). A child has both a profile and a
   // linked user account; user_id is null until the child accepts the invite.
