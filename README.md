@@ -68,10 +68,14 @@ into your family's repertoire, run once (with `DATABASE_URL` set):
 ```bash
 pnpm run seed                     # single family: automatic
 pnpm run seed -- --user=<name>    # if you have more than one family
+pnpm run seed -- --update         # also refresh tags/notes of existing songs
 ```
 
-It's idempotent — it skips songs already in the repertoire, so you can add more
-entries to `songs.json` and run it again.
+Tags are **themes** (adoración, gracia, entrega, …) so the director can pick
+Sunday songs by the teaching topic; the artist goes in the song's notes. It's
+idempotent — new songs are added and existing ones are skipped, so you can keep
+adding entries to `songs.json` and run it again. Use `--update` to push edited
+tags/notes onto songs that are already in the repertoire.
 
 ## API
 

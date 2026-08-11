@@ -42,28 +42,45 @@ async function main() {
     readFileSync(new URL("./songs.json", import.meta.url), "utf8"),
   );
   const familyId = await resolveFamilyId();
+  // With --update, refresh tags/notes of songs already in the repertoire
+  // (handy after editing songs.json). Without it, existing songs are left as-is.
+  const update = process.argv.includes("--update");
 
   let inserted = 0;
+  let updated = 0;
   let skipped = 0;
   for (const s of songs) {
     const title = (s.title ?? "").trim();
     if (!title) continue;
+    const tags = JSON.stringify(s.tags ?? []);
+    const notes = s.notes ?? "";
     const exists = await query(
       `SELECT 1 FROM mp_songs WHERE family_id = $1 AND lower(title) = lower($2)`,
       [familyId, title],
     );
     if (exists.length) {
-      skipped++;
+      if (update) {
+        await query(
+          `UPDATE mp_songs SET tags = $3::jsonb, notes = $4
+           WHERE family_id = $1 AND lower(title) = lower($2)`,
+          [familyId, title, tags, notes],
+        );
+        updated++;
+      } else {
+        skipped++;
+      }
       continue;
     }
     await query(
       `INSERT INTO mp_songs (id, family_id, title, tags, notes) VALUES ($1, $2, $3, $4::jsonb, $5)`,
-      [randomUUID(), familyId, title, JSON.stringify(s.tags ?? []), s.notes ?? ""],
+      [randomUUID(), familyId, title, tags, notes],
     );
     inserted++;
   }
 
-  console.log(`Repertoire seed complete: ${inserted} added, ${skipped} already existed.`);
+  console.log(
+    `Repertoire seed complete: ${inserted} added, ${updated} updated, ${skipped} left unchanged.`,
+  );
   await pool.end();
 }
 
