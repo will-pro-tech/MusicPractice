@@ -34,63 +34,11 @@ export default function ParentServices() {
       ) : services.length === 0 ? (
         <EmptyState title="No services planned yet" hint="Tap + to plan a Sunday." />
       ) : (
-        services.map((s) => (
-          <Card key={s.id} className="space-y-2">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-teal-100 text-teal-700">
-                  <CalendarDays size={18} />
-                </span>
-                <div>
-                  <p className="font-bold text-neutral-800">{formatDate(s.date)}</p>
-                  {s.theme && <p className="text-sm text-teal-700">Theme: {s.theme}</p>}
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <button type="button" onClick={() => setEditing(s)} className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
-                  <Pencil size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (confirm("Delete this service?")) {
-                      await api.deleteService(s.id);
-                      load();
-                    }
-                  }}
-                  className="rounded-full p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-
-            {s.songs.length === 0 ? (
-              <p className="rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-400">No songs yet.</p>
-            ) : (
-              <ol className="space-y-1.5">
-                {s.songs.map((song, i) => (
-                  <li key={song.id} className="rounded-xl bg-neutral-50 px-3 py-2">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-bold text-neutral-400">{i + 1}.</span>
-                      <span className="font-medium text-neutral-800">{song.title}</span>
-                    </div>
-                    {song.tags.length > 0 && (
-                      <div className="mt-1 pl-5">
-                        <TagChips tags={song.tags} />
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            )}
-            {s.notes && (
-              <p className="flex items-start gap-1.5 text-sm text-neutral-500">
-                <StickyNote size={13} className="mt-0.5 shrink-0" /> {s.notes}
-              </p>
-            )}
-          </Card>
-        ))
+        <div className="space-y-2">
+          {services.map((s) => (
+            <ServiceCard key={s.id} service={s} onEdit={() => setEditing(s)} onDeleted={load} />
+          ))}
+        </div>
       )}
 
       {editing && (
@@ -102,6 +50,84 @@ export default function ParentServices() {
             load();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+/** Compact service row: date + theme + song count; tap to expand the songs. */
+function ServiceCard({
+  service,
+  onEdit,
+  onDeleted,
+}: {
+  service: Service;
+  onEdit: () => void;
+  onDeleted: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = service.songs.length;
+
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
+      <div className="flex items-center gap-1 p-2.5">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-700">
+            <CalendarDays size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display font-bold text-neutral-800">{formatDate(service.date)}</p>
+            <p className="truncate text-xs text-neutral-500">
+              {service.theme ? `${service.theme} · ` : ""}
+              {count} song{count === 1 ? "" : "s"}
+            </p>
+          </div>
+          <ChevronDown size={18} className={`shrink-0 text-neutral-300 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        <button type="button" onClick={onEdit} className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+          <Pencil size={15} />
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            if (confirm("Delete this service?")) {
+              await api.deleteService(service.id);
+              onDeleted();
+            }
+          }}
+          className="rounded-full p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {open && (
+        <div className="border-t border-black/5 p-3">
+          {count === 0 ? (
+            <p className="text-sm text-neutral-400">No songs yet.</p>
+          ) : (
+            <ol className="space-y-1.5">
+              {service.songs.map((song, i) => (
+                <li key={song.id} className="rounded-xl bg-neutral-50 px-3 py-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-bold text-neutral-400">{i + 1}.</span>
+                    <span className="font-medium text-neutral-800">{song.title}</span>
+                  </div>
+                  {song.tags.length > 0 && (
+                    <div className="mt-1 pl-5">
+                      <TagChips tags={song.tags} />
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          {service.notes && (
+            <p className="mt-2 flex items-start gap-1.5 text-sm text-neutral-500">
+              <StickyNote size={13} className="mt-0.5 shrink-0" /> {service.notes}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
