@@ -1,12 +1,38 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Check, Copy, RefreshCw, KeyRound, Pencil, Link2 } from "lucide-react";
-import type { Child } from "../types";
+import { Plus, Trash2, Check, Copy, RefreshCw, KeyRound, Pencil, Link2, UserPlus, ShieldCheck } from "lucide-react";
+import type { Adult, Child, ParentInvite } from "../types";
 import { api } from "../api";
 import { COLOR_KEYS, colorOf, initials } from "../lib";
 import { Button, Card, EmptyState, Label, Spinner, TextInput } from "../ui";
 
 function inviteLink(code: string) {
   return `${window.location.origin}/?invite=${code}`;
+}
+
+function CopyLink({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(inviteLink(code));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        readOnly
+        value={inviteLink(code)}
+        onFocus={(e) => e.currentTarget.select()}
+        className="min-w-0 flex-1 rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-600"
+      />
+      <button type="button" onClick={copy} className="shrink-0 rounded-lg bg-teal-600 px-2.5 py-1.5 text-xs font-semibold text-white">
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+    </div>
+  );
 }
 
 export default function ParentChildren() {
@@ -23,9 +49,13 @@ export default function ParentChildren() {
   return (
     <div className="space-y-4">
       <div className="px-1">
-        <h1 className="text-xl font-bold text-neutral-800">Kids</h1>
-        <p className="text-sm text-neutral-500">Add each child, then share their invite link so they can create their own login.</p>
+        <h1 className="text-xl font-bold text-neutral-800">Family</h1>
+        <p className="text-sm text-neutral-500">Manage the adults and kids in your family. Everyone signs in with their own account.</p>
       </div>
+
+      <AdultsSection />
+
+      <h2 className="px-1 pt-1 text-sm font-bold uppercase tracking-wide text-neutral-400">Kids</h2>
 
       {children === null ? (
         <Spinner />
@@ -263,5 +293,132 @@ function ChildEditor({
         <Button className="flex-1" onClick={submit} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
       </div>
     </Card>
+  );
+}
+
+function AdultsSection() {
+  const [adults, setAdults] = useState<Adult[] | null>(null);
+  const [invites, setInvites] = useState<ParentInvite[]>([]);
+  const [inviting, setInviting] = useState(false);
+
+  async function load() {
+    const [a, i] = await Promise.all([api.listParents(), api.listParentInvites()]);
+    setAdults(a);
+    setInvites(i);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 font-bold text-neutral-800">
+          <ShieldCheck size={18} className="text-teal-600" /> Adults
+        </div>
+        <button
+          type="button"
+          onClick={() => setInviting(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-200"
+        >
+          <UserPlus size={14} /> Invite adult
+        </button>
+      </div>
+
+      {adults === null ? (
+        <Spinner />
+      ) : (
+        <div className="space-y-1.5">
+          {adults.map((a) => (
+            <div key={a.id} className="flex items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
+                {initials(a.displayName)}
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-neutral-800">
+                  {a.displayName}
+                  {a.isSelf && <span className="ml-1 text-xs font-normal text-neutral-400">(you)</span>}
+                </p>
+                <p className="text-xs text-neutral-500">@{a.username}</p>
+              </div>
+              {!a.isSelf && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm(`Remove ${a.displayName} from the family?`)) {
+                      await api.removeParent(a.id);
+                      load();
+                    }
+                  }}
+                  className="rounded-full p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {invites.map((inv) => (
+        <div key={inv.code} className="rounded-xl bg-amber-50 p-2.5">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-semibold text-amber-800">
+              {inv.displayName ? `Invite for ${inv.displayName}` : "Adult invite"} · pending
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                await api.deleteParentInvite(inv.code);
+                load();
+              }}
+              className="rounded-full p-1 text-amber-700 hover:bg-amber-100"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+          <CopyLink code={inv.code} />
+        </div>
+      ))}
+
+      {inviting && (
+        <InviteAdultForm
+          onCancel={() => setInviting(false)}
+          onDone={() => {
+            setInviting(false);
+            load();
+          }}
+        />
+      )}
+    </Card>
+  );
+}
+
+function InviteAdultForm({ onCancel, onDone }: { onCancel: () => void; onDone: () => void }) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="rounded-xl bg-neutral-50 p-3">
+      <Label>Name of the adult (optional)</Label>
+      <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gaby (band director)" />
+      <div className="mt-2 flex gap-2">
+        <Button variant="ghost" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <Button
+          className="flex-1"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await api.createParentInvite(name.trim());
+              onDone();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Creating…" : "Create invite link"}
+        </Button>
+      </div>
+    </div>
   );
 }

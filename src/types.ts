@@ -27,8 +27,21 @@ export interface MyChild {
 }
 
 export interface InvitePreview {
-  childName: string;
+  name: string;
   familyName: string;
+  role: Role;
+}
+
+export interface Adult {
+  id: string;
+  displayName: string;
+  username: string;
+  isSelf: boolean;
+}
+
+export interface ParentInvite {
+  code: string;
+  displayName: string;
 }
 
 export interface Session {

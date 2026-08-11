@@ -1,7 +1,9 @@
 import type {
+  Adult,
   Child,
   InvitePreview,
   MyChild,
+  ParentInvite,
   Service,
   Session,
   Song,
@@ -66,6 +68,14 @@ export const api = {
   resetChildPassword: (id: string, password: string) =>
     request<{ ok: true }>("POST", `/api/children/${id}/reset-password`, { password }),
   myChild: () => request<MyChild>("GET", "/api/me/child"),
+
+  // ---- adults (co-parents) ----
+  listParents: () => request<Adult[]>("GET", "/api/parents"),
+  listParentInvites: () => request<ParentInvite[]>("GET", "/api/parent-invites"),
+  createParentInvite: (displayName: string) =>
+    request<ParentInvite>("POST", "/api/parent-invites", { displayName }),
+  deleteParentInvite: (code: string) => request<void>("DELETE", `/api/parent-invites/${encodeURIComponent(code)}`),
+  removeParent: (id: string) => request<void>("DELETE", `/api/parents/${id}`),
 
   // ---- sessions ----
   listSessions: (params: { childId?: string; date?: string; from?: string; to?: string } = {}) => {

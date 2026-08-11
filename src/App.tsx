@@ -22,7 +22,7 @@ const PARENT_TABS: { id: Tab; label: string; icon: typeof CalendarCheck }[] = [
   { id: "summary", label: "Summary", icon: BarChart3 },
   { id: "repertoire", label: "Repertoire", icon: ListMusic },
   { id: "services", label: "Sundays", icon: CalendarDays },
-  { id: "children", label: "Kids", icon: Users },
+  { id: "children", label: "Family", icon: Users },
 ];
 
 export default function App() {

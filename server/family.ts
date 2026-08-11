@@ -160,22 +160,107 @@ childrenRouter.get(
   }),
 );
 
+/* ------------------------- adults (co-parents) -------------------------- */
+
+// All adults in the family (any signed-in member can see who the parents are).
+childrenRouter.get(
+  "/parents",
+  requireAuth,
+  h(async (req, res) => {
+    const rows = await query(
+      `SELECT id, display_name AS "displayName", username, (id = $2) AS "isSelf"
+       FROM mp_users WHERE family_id = $1 AND role = 'parent' ORDER BY created_at`,
+      [req.user!.familyId, req.user!.id],
+    );
+    res.json(rows);
+  }),
+);
+
+childrenRouter.get(
+  "/parent-invites",
+  requireAuth,
+  requireParent,
+  h(async (req, res) => {
+    const rows = await query(
+      `SELECT code, display_name AS "displayName" FROM mp_parent_invites
+       WHERE family_id = $1 ORDER BY created_at`,
+      [req.user!.familyId],
+    );
+    res.json(rows);
+  }),
+);
+
+childrenRouter.post(
+  "/parent-invites",
+  requireAuth,
+  requireParent,
+  h(async (req, res) => {
+    const displayName = String(req.body?.displayName ?? "").trim();
+    const code = newInviteCode();
+    await query(
+      `INSERT INTO mp_parent_invites (code, family_id, display_name) VALUES ($1, $2, $3)`,
+      [code, req.user!.familyId, displayName],
+    );
+    res.status(201).json({ code, displayName });
+  }),
+);
+
+childrenRouter.delete(
+  "/parent-invites/:code",
+  requireAuth,
+  requireParent,
+  h(async (req, res) => {
+    await query(`DELETE FROM mp_parent_invites WHERE code = $1 AND family_id = $2`, [req.params.code, req.user!.familyId]);
+    res.status(204).end();
+  }),
+);
+
+// Remove another adult — never yourself, and never the last parent.
+childrenRouter.delete(
+  "/parents/:id",
+  requireAuth,
+  requireParent,
+  h(async (req, res) => {
+    if (req.params.id === req.user!.id) return void res.status(400).json({ error: "You can't remove yourself" });
+    const count = await query<{ n: string }>(
+      `SELECT count(*)::text AS n FROM mp_users WHERE family_id = $1 AND role = 'parent'`,
+      [req.user!.familyId],
+    );
+    if (Number(count[0]?.n ?? 0) <= 1)
+      return void res.status(400).json({ error: "A family needs at least one parent" });
+    await query(`DELETE FROM mp_users WHERE id = $1 AND family_id = $2 AND role = 'parent'`, [
+      req.params.id, req.user!.familyId,
+    ]);
+    res.status(204).end();
+  }),
+);
+
 /* --------------------------- public invites ----------------------------- */
 
 export const publicInviteRouter = Router();
 
-// Preview an invite (shown on the join screen) — no auth.
+// Preview an invite (shown on the join screen) — no auth. Works for both a
+// child invite (mp_children.invite_code) and an adult invite (mp_parent_invites).
 publicInviteRouter.get(
   "/invite/:code",
   h(async (req, res) => {
-    const rows = await query<{ childName: string; familyName: string }>(
-      `SELECT c.name AS "childName", f.name AS "familyName"
+    const child = await query<{ name: string; familyName: string }>(
+      `SELECT c.name, f.name AS "familyName"
        FROM mp_children c JOIN mp_families f ON f.id = c.family_id
        WHERE c.invite_code = $1 AND c.user_id IS NULL`,
       [req.params.code],
     );
-    if (!rows.length) return void res.status(404).json({ error: "This invite is invalid or already used" });
-    res.json(rows[0]);
+    if (child.length) return void res.json({ ...child[0], role: "child" });
+
+    const parent = await query<{ name: string; familyName: string }>(
+      `SELECT pi.display_name AS name, f.name AS "familyName"
+       FROM mp_parent_invites pi JOIN mp_families f ON f.id = pi.family_id
+       WHERE pi.code = $1`,
+      [req.params.code],
+    );
+    if (parent.length) return void res.json({ ...parent[0], role: "parent" });
+
+    res.status(404).json({ error: "This invite is invalid or already used" });
   }),
 );
 
@@ -189,24 +274,46 @@ publicInviteRouter.post(
       return void res.status(400).json({ error: "Username must be 3+ chars: letters, numbers, . _ -" });
     if (password.length < 4) return void res.status(400).json({ error: "Password must be at least 4 characters" });
 
-    const rows = await query<{ id: string; family_id: string; name: string }>(
-      `SELECT id, family_id, name FROM mp_children WHERE invite_code = $1 AND user_id IS NULL`,
-      [req.params.code],
-    );
-    if (!rows.length) return void res.status(404).json({ error: "This invite is invalid or already used" });
-    const child = rows[0];
-
     const taken = await query(`SELECT 1 FROM mp_users WHERE username = $1`, [username]);
     if (taken.length) return void res.status(409).json({ error: "That username is taken" });
 
-    const userId = randomUUID();
-    await query(
-      `INSERT INTO mp_users (id, family_id, role, username, password_hash, display_name)
-       VALUES ($1, $2, 'child', $3, $4, $5)`,
-      [userId, child.family_id, username, hashPassword(password), child.name],
+    // A child invite?
+    const childRows = await query<{ id: string; family_id: string; name: string }>(
+      `SELECT id, family_id, name FROM mp_children WHERE invite_code = $1 AND user_id IS NULL`,
+      [req.params.code],
     );
-    await query(`UPDATE mp_children SET user_id = $1, invite_code = NULL WHERE id = $2`, [userId, child.id]);
-    await setSession(res, userId);
-    res.status(201).json({ id: userId, role: "child", displayName: child.name, username });
+    if (childRows.length) {
+      const child = childRows[0];
+      const userId = randomUUID();
+      await query(
+        `INSERT INTO mp_users (id, family_id, role, username, password_hash, display_name)
+         VALUES ($1, $2, 'child', $3, $4, $5)`,
+        [userId, child.family_id, username, hashPassword(password), child.name],
+      );
+      await query(`UPDATE mp_children SET user_id = $1, invite_code = NULL WHERE id = $2`, [userId, child.id]);
+      await setSession(res, userId);
+      return void res.status(201).json({ id: userId, role: "child", displayName: child.name, username });
+    }
+
+    // An adult invite?
+    const parentRows = await query<{ family_id: string; display_name: string }>(
+      `SELECT family_id, display_name FROM mp_parent_invites WHERE code = $1`,
+      [req.params.code],
+    );
+    if (parentRows.length) {
+      const inv = parentRows[0];
+      const name = inv.display_name || username;
+      const userId = randomUUID();
+      await query(
+        `INSERT INTO mp_users (id, family_id, role, username, password_hash, display_name)
+         VALUES ($1, $2, 'parent', $3, $4, $5)`,
+        [userId, inv.family_id, username, hashPassword(password), name],
+      );
+      await query(`DELETE FROM mp_parent_invites WHERE code = $1`, [req.params.code]);
+      await setSession(res, userId);
+      return void res.status(201).json({ id: userId, role: "parent", displayName: name, username });
+    }
+
+    res.status(404).json({ error: "This invite is invalid or already used" });
   }),
 );

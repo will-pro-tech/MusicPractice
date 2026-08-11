@@ -143,4 +143,16 @@ export async function initSchema(): Promise<void> {
     );
   `);
   await query(`CREATE INDEX IF NOT EXISTS mp_service_songs_service_idx ON mp_service_songs (service_id);`);
+
+  // Pending invitations for additional adults (co-parents / band director).
+  // Children are invited via mp_children.invite_code; adults have no profile
+  // row, so their invites live here until accepted.
+  await query(`
+    CREATE TABLE IF NOT EXISTS mp_parent_invites (
+      code text PRIMARY KEY,
+      family_id text NOT NULL REFERENCES mp_families(id) ON DELETE CASCADE,
+      display_name text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
 }

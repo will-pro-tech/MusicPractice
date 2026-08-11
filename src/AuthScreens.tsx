@@ -174,7 +174,10 @@ function JoinScreen({ code, onAuthed, onBack }: { code: string; onAuthed: (u: Us
   }
 
   return (
-    <Frame title={`Hi, ${preview.childName}!`} subtitle={`Join ${preview.familyName} and create your login.`}>
+    <Frame
+      title={preview.name ? `Hi, ${preview.name}!` : "Join the family"}
+      subtitle={`Join ${preview.familyName}${preview.role === "parent" ? " as a parent." : " and create your login."}`}
+    >
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div>
           <Label>Choose a username</Label>
