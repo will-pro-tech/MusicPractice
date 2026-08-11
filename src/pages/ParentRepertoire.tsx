@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import type { Song } from "../types";
 import { api } from "../api";
-import { Button, Card, EmptyState, Label, Spinner, TextArea, TextInput } from "../ui";
-import { TagFilter, TagChips, TagInput } from "../tags";
+import { Button, EmptyState, Label, Spinner, TextArea, TextInput } from "../ui";
+import { TagFilter, TagInput } from "../tags";
 
 export default function ParentRepertoire() {
   const [songs, setSongs] = useState<Song[] | null>(null);
@@ -30,11 +30,14 @@ export default function ParentRepertoire() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between px-1">
         <div>
           <h1 className="text-xl font-bold text-neutral-800">Repertoire</h1>
-          <p className="text-sm text-neutral-500">Songs kids and the band can choose from.</p>
+          <p className="text-sm text-neutral-500">
+            {songs ? `${songs.length} song${songs.length === 1 ? "" : "s"}` : "Songs kids and the band can choose from."}
+            {tag ? ` · ${tag}` : ""}
+          </p>
         </div>
         <Button onClick={() => setEditing("new")} className="px-3">
           <Plus size={18} />
@@ -50,7 +53,9 @@ export default function ParentRepertoire() {
           className="flex-1 bg-transparent py-2.5 text-sm outline-none"
         />
       </div>
-      <TagFilter tags={allTags} active={tag} onSelect={setTag} />
+
+      {/* Themes on a single swipeable line — no big wrapping block. */}
+      <TagFilter tags={allTags} active={tag} onSelect={setTag} scroll />
 
       {songs === null ? (
         <Spinner />
@@ -60,34 +65,11 @@ export default function ParentRepertoire() {
           hint={q || tag ? undefined : "Tap + to add the first one."}
         />
       ) : (
-        songs.map((s) => (
-          <Card key={s.id} className="flex items-start gap-3">
-            <div className="flex-1">
-              <p className="font-semibold text-neutral-800">{s.title}</p>
-              {s.notes && <p className="mt-0.5 text-sm text-neutral-500">{s.notes}</p>}
-              <div className="mt-1.5">
-                <TagChips tags={s.tags} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <button type="button" onClick={() => setEditing(s)} className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
-                <Pencil size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (confirm(`Remove “${s.title}” from the repertoire?`)) {
-                    await api.deleteSong(s.id);
-                    refresh();
-                  }
-                }}
-                className="rounded-full p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </Card>
-        ))
+        <div className="space-y-2">
+          {songs.map((s) => (
+            <SongRow key={s.id} song={s} onEdit={() => setEditing(s)} onDeleted={refresh} />
+          ))}
+        </div>
       )}
 
       {editing && (
@@ -101,6 +83,39 @@ export default function ParentRepertoire() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** One compact line per song: title, then artist + themes in small muted text. */
+function SongRow({ song, onEdit, onDeleted }: { song: Song; onEdit: () => void; onDeleted: () => void }) {
+  return (
+    <div className="flex items-center gap-1 rounded-xl bg-white px-3 py-2.5 ring-1 ring-black/5">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-neutral-800">{song.title}</p>
+        {(song.notes || song.tags.length > 0) && (
+          <p className="mt-0.5 truncate text-xs text-neutral-400">
+            {song.notes}
+            {song.notes && song.tags.length > 0 ? " · " : ""}
+            {song.tags.map((t) => `#${t}`).join(" ")}
+          </p>
+        )}
+      </div>
+      <button type="button" onClick={onEdit} className="shrink-0 rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+        <Pencil size={15} />
+      </button>
+      <button
+        type="button"
+        onClick={async () => {
+          if (confirm(`Remove “${song.title}” from the repertoire?`)) {
+            await api.deleteSong(song.id);
+            onDeleted();
+          }
+        }}
+        className="shrink-0 rounded-full p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+      >
+        <Trash2 size={15} />
+      </button>
     </div>
   );
 }
@@ -142,9 +157,7 @@ function SongEditor({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-neutral-50 p-4 sm:rounded-3xl">
-        <h2 className="mb-3 text-lg font-bold text-neutral-800">
-          {song ? "Edit song" : "New song"}
-        </h2>
+        <h2 className="mb-3 text-lg font-bold text-neutral-800">{song ? "Edit song" : "New song"}</h2>
         <div className="space-y-3">
           <div>
             <Label>Name</Label>
@@ -153,11 +166,11 @@ function SongEditor({
           <div>
             <Label>Themes / tags</Label>
             <TagInput value={tags} onChange={setTags} suggestions={suggestions} />
-            <p className="mt-1 text-xs text-neutral-400">e.g. worship, gratitude, Christmas, communion…</p>
+            <p className="mt-1 text-xs text-neutral-400">e.g. adoración, gratitud, gracia, entrega…</p>
           </div>
           <div>
-            <Label>Notes (optional)</Label>
-            <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Key, author, link…" />
+            <Label>Notes (artist, key, link…)</Label>
+            <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Danilo Montero" />
           </div>
           {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
           <div className="flex gap-3 pt-1">

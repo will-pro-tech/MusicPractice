@@ -71,19 +71,24 @@ export function TagInput({
   );
 }
 
-/** Row of selectable tag chips used to filter a list. `null` = "all". */
+/**
+ * Row of selectable tag chips used to filter a list. `null` = "all".
+ * With `scroll`, chips stay on a single swipeable line instead of wrapping.
+ */
 export function TagFilter({
   tags,
   active,
   onSelect,
+  scroll,
 }: {
   tags: string[];
   active: string | null;
   onSelect: (tag: string | null) => void;
+  scroll?: boolean;
 }) {
   if (tags.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className={cn("gap-1.5", scroll ? "-mx-1 flex flex-nowrap overflow-x-auto px-1 pb-1" : "flex flex-wrap")}>
       <Chip label="All" selected={active === null} onClick={() => onSelect(null)} />
       {tags.map((t) => (
         <Chip key={t} label={t} selected={active === t} onClick={() => onSelect(active === t ? null : t)} />
@@ -98,7 +103,7 @@ function Chip({ label, selected, onClick }: { label: string; selected: boolean; 
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full px-3 py-1 text-sm font-medium transition-colors",
+        "shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors",
         selected ? "bg-teal-600 text-white" : "bg-white text-neutral-600 ring-1 ring-black/10 hover:bg-neutral-100",
       )}
     >
