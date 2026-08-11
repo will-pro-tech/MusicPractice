@@ -10,6 +10,7 @@
     "build:client": "vite build",
     "build:server": "esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.mjs",
     "start": "NODE_ENV=production node --enable-source-maps dist/index.mjs",
+    "seed": "tsx scripts/seed-songs.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

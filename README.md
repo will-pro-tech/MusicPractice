@@ -60,6 +60,19 @@ pnpm run start          # NODE_ENV=production node dist/index.mjs
    iPhone.
 5. On your phone: open the published URL → **Share → "Add to Home Screen"**.
 
+## Seed the repertoire
+
+`scripts/songs.json` holds a starter list of songs (title + tags). To load them
+into your family's repertoire, run once (with `DATABASE_URL` set):
+
+```bash
+pnpm run seed                     # single family: automatic
+pnpm run seed -- --user=<name>    # if you have more than one family
+```
+
+It's idempotent — it skips songs already in the repertoire, so you can add more
+entries to `songs.json` and run it again.
+
 ## API
 
 | Method | Path | Description |
