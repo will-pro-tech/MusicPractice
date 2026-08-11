@@ -5,6 +5,7 @@ export interface User {
   role: Role;
   displayName: string;
   username: string;
+  familyName: string;
 }
 
 export interface Child {

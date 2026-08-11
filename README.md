@@ -60,6 +60,20 @@ pnpm run start          # NODE_ENV=production node dist/index.mjs
    iPhone.
 5. On your phone: open the published URL → **Share → "Add to Home Screen"**.
 
+## Passwords & recovery
+
+There's no email, so password recovery is handled inside the family:
+
+- **Change your own password:** account menu (top-right) → **Change password**.
+- **A child forgot theirs:** a parent opens **Family → the child → Reset password**.
+- **An adult forgot theirs:** another adult opens **Family → Adults → 🔑** next to
+  their name and sets a new one.
+- **The only adult is locked out:** reset any account straight from the Replit
+  Shell (you own the server):
+  ```bash
+  pnpm run reset-password -- --user=<username> --password=<newpassword>
+  ```
+
 ## Seed the repertoire
 
 `scripts/songs.json` holds a starter list of songs (title + tags). To load them

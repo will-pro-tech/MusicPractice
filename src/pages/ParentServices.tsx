@@ -260,7 +260,7 @@ function SongMultiSelect({
           className="flex-1 bg-transparent py-2 text-sm outline-none"
         />
       </div>
-      <TagFilter tags={allTags} active={tag} onSelect={setTag} />
+      <TagFilter tags={allTags} active={tag} onSelect={setTag} scroll />
       <div className="max-h-64 space-y-1.5 overflow-y-auto">
         {songs === null ? (
           <p className="py-4 text-center text-sm text-neutral-400">Loading…</p>

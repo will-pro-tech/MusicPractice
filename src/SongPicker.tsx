@@ -107,7 +107,7 @@ function PickerSheet({
               className="flex-1 bg-transparent py-2.5 text-sm outline-none"
             />
           </div>
-          <TagFilter tags={allTags} active={tag} onSelect={setTag} />
+          <TagFilter tags={allTags} active={tag} onSelect={setTag} scroll />
         </div>
 
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">

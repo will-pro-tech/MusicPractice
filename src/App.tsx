@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
   CalendarCheck, History, BarChart3, Users, Music2, ListMusic, CalendarDays,
-  LogOut, ChevronDown,
+  LogOut, ChevronDown, KeyRound,
 } from "lucide-react";
 import { useUser } from "./auth";
-import { cn, colorOf, initials } from "./lib";
+import { api } from "./api";
+import { cn, initials } from "./lib";
+import { Button, Label, TextInput } from "./ui";
 import ChildToday from "./pages/ChildToday";
 import ChildHistory from "./pages/ChildHistory";
 import ParentSummary from "./pages/ParentSummary";
@@ -30,17 +32,23 @@ export default function App() {
   const isParent = user.role === "parent";
   const [tab, setTab] = useState<Tab>(isParent ? "summary" : "today");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showChangePw, setShowChangePw] = useState(false);
   const tabs = isParent ? PARENT_TABS : CHILD_TABS;
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col bg-neutral-50">
       <header className="sticky top-0 z-30 border-b border-black/5 bg-neutral-50/90 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2 font-bold text-teal-700">
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-600 text-white">
-              <Music2 size={18} />
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-sm">
+              <Music2 size={19} />
             </span>
-            My Practice
+            <div className="min-w-0 leading-none">
+              <p className="truncate font-display text-lg font-extrabold text-teal-700">
+                {user.familyName || "My Practice"}
+              </p>
+              <p className="text-[11px] font-medium text-neutral-400">Music practice</p>
+            </div>
           </div>
 
           <div className="relative">
@@ -62,6 +70,13 @@ export default function App() {
                     <p className="font-semibold text-neutral-800">{user.displayName}</p>
                     <p className="text-xs text-neutral-500">@{user.username} · {isParent ? "Parent" : "Child"}</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setShowChangePw(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+                  >
+                    <KeyRound size={16} /> Change password
+                  </button>
                   <button
                     type="button"
                     onClick={logout}
@@ -111,6 +126,60 @@ export default function App() {
           })}
         </div>
       </nav>
+
+      {showChangePw && <ChangePassword onClose={() => setShowChangePw(false)} />}
+    </div>
+  );
+}
+
+function ChangePassword({ onClose }: { onClose: () => void }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  async function submit() {
+    if (next.length < 4) return setMsg("New password must be at least 4 characters.");
+    setBusy(true);
+    setMsg(null);
+    try {
+      await api.changePassword(current, next);
+      setOk(true);
+      setMsg("Password changed.");
+      setTimeout(onClose, 900);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Couldn't change password");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-6">
+      <div className="w-full max-w-sm rounded-3xl bg-neutral-50 p-5">
+        <h2 className="text-lg font-bold text-neutral-800">Change password</h2>
+        <div className="mt-4 space-y-3">
+          <div>
+            <Label>Current password</Label>
+            <TextInput type="password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          </div>
+          <div>
+            <Label>New password</Label>
+            <TextInput
+              type="password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+              placeholder="At least 4 characters"
+            />
+          </div>
+          {msg && <p className={cn("text-sm font-medium", ok ? "text-teal-700" : "text-rose-600")}>{msg}</p>}
+          <div className="flex gap-3">
+            <Button variant="ghost" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" onClick={submit} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

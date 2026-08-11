@@ -185,7 +185,13 @@ function ChildRow({ child, onChanged }: { child: Child; onChanged: () => void })
         </RowAction>
       </div>
 
-      {resetting && <ResetPassword childId={child.id} name={child.name} onDone={() => setResetting(false)} />}
+      {resetting && (
+        <ResetPassword
+          name={child.name}
+          onReset={(pw) => api.resetChildPassword(child.id, pw)}
+          onDone={() => setResetting(false)}
+        />
+      )}
     </Card>
   );
 }
@@ -206,7 +212,15 @@ function RowAction({
   );
 }
 
-function ResetPassword({ childId, name, onDone }: { childId: string; name: string; onDone: () => void }) {
+function ResetPassword({
+  name,
+  onReset,
+  onDone,
+}: {
+  name: string;
+  onReset: (pw: string) => Promise<unknown>;
+  onDone: () => void;
+}) {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -215,7 +229,7 @@ function ResetPassword({ childId, name, onDone }: { childId: string; name: strin
     if (pw.length < 4) return setMsg("At least 4 characters.");
     setBusy(true);
     try {
-      await api.resetChildPassword(childId, pw);
+      await onReset(pw);
       setMsg("Password updated.");
       setPw("");
       setTimeout(onDone, 900);
@@ -300,6 +314,7 @@ function AdultsSection() {
   const [adults, setAdults] = useState<Adult[] | null>(null);
   const [invites, setInvites] = useState<ParentInvite[]>([]);
   const [inviting, setInviting] = useState(false);
+  const [resetId, setResetId] = useState<string | null>(null);
 
   async function load() {
     const [a, i] = await Promise.all([api.listParents(), api.listParentInvites()]);
@@ -330,30 +345,49 @@ function AdultsSection() {
       ) : (
         <div className="space-y-1.5">
           {adults.map((a) => (
-            <div key={a.id} className="flex items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
-                {initials(a.displayName)}
-              </span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-neutral-800">
-                  {a.displayName}
-                  {a.isSelf && <span className="ml-1 text-xs font-normal text-neutral-400">(you)</span>}
-                </p>
-                <p className="text-xs text-neutral-500">@{a.username}</p>
+            <div key={a.id} className="space-y-2">
+              <div className="flex items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
+                  {initials(a.displayName)}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-neutral-800">
+                    {a.displayName}
+                    {a.isSelf && <span className="ml-1 text-xs font-normal text-neutral-400">(you)</span>}
+                  </p>
+                  <p className="text-xs text-neutral-500">@{a.username}</p>
+                </div>
+                {!a.isSelf && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setResetId(resetId === a.id ? null : a.id)}
+                      title="Reset password"
+                      className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                    >
+                      <KeyRound size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (confirm(`Remove ${a.displayName} from the family?`)) {
+                          await api.removeParent(a.id);
+                          load();
+                        }
+                      }}
+                      className="rounded-full p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </>
+                )}
               </div>
-              {!a.isSelf && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (confirm(`Remove ${a.displayName} from the family?`)) {
-                      await api.removeParent(a.id);
-                      load();
-                    }
-                  }}
-                  className="rounded-full p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <Trash2 size={16} />
-                </button>
+              {resetId === a.id && (
+                <ResetPassword
+                  name={a.displayName}
+                  onReset={(pw) => api.resetParentPassword(a.id, pw)}
+                  onDone={() => setResetId(null)}
+                />
               )}
             </div>
           ))}

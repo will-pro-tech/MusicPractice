@@ -19,6 +19,22 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Brand / display type — a friendly rounded face that gives the app its own
+   character. Applied to the logo wordmark and all headings. Falls back
+   gracefully to a rounded system font if the webfont can't load. */
+.font-display,
+h1,
+h2 {
+  font-family: "Baloo 2", ui-rounded, "Segoe UI Rounded", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Baloo 2 runs visually large; nudge line-height so headings stay tidy. */
+h1,
+h2 {
+  line-height: 1.15;
+}
+
 /* Respect the iOS safe area at the bottom for the tab bar. */
 .pb-safe {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));

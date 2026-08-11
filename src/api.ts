@@ -53,6 +53,8 @@ export const api = {
   login: (data: { username: string; password: string }) =>
     request<User>("POST", "/api/auth/login", data),
   logout: () => request<void>("POST", "/api/auth/logout"),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: true }>("POST", "/api/auth/change-password", { currentPassword, newPassword }),
   getInvite: (code: string) => request<InvitePreview>("GET", `/api/invite/${encodeURIComponent(code)}`),
   acceptInvite: (code: string, data: { username: string; password: string }) =>
     request<User>("POST", `/api/invite/${encodeURIComponent(code)}/accept`, data),
@@ -76,6 +78,8 @@ export const api = {
     request<ParentInvite>("POST", "/api/parent-invites", { displayName }),
   deleteParentInvite: (code: string) => request<void>("DELETE", `/api/parent-invites/${encodeURIComponent(code)}`),
   removeParent: (id: string) => request<void>("DELETE", `/api/parents/${id}`),
+  resetParentPassword: (id: string, password: string) =>
+    request<{ ok: true }>("POST", `/api/parents/${id}/reset-password`, { password }),
 
   // ---- sessions ----
   listSessions: (params: { childId?: string; date?: string; from?: string; to?: string } = {}) => {

@@ -235,6 +235,24 @@ childrenRouter.delete(
   }),
 );
 
+// One adult resets another adult's password (recovery when someone forgets it).
+childrenRouter.post(
+  "/parents/:id/reset-password",
+  requireAuth,
+  requireParent,
+  h(async (req, res) => {
+    const password = String(req.body?.password ?? "");
+    if (password.length < 4) return void res.status(400).json({ error: "Password must be at least 4 characters" });
+    const rows = await query(
+      `SELECT 1 FROM mp_users WHERE id = $1 AND family_id = $2 AND role = 'parent'`,
+      [req.params.id, req.user!.familyId],
+    );
+    if (!rows.length) return void res.status(404).json({ error: "Not found" });
+    await query(`UPDATE mp_users SET password_hash = $2 WHERE id = $1`, [req.params.id, hashPassword(password)]);
+    res.json({ ok: true });
+  }),
+);
+
 /* --------------------------- public invites ----------------------------- */
 
 export const publicInviteRouter = Router();

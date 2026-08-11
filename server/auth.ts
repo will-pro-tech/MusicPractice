@@ -93,6 +93,7 @@ export function clearSession(res: Response) {
 export interface AuthUser {
   id: string;
   familyId: string;
+  familyName: string;
   role: "parent" | "child";
   username: string;
   displayName: string;
@@ -113,8 +114,10 @@ async function currentUser(req: Request): Promise<AuthUser | null> {
   const userId = await readToken(token);
   if (!userId) return null;
   const rows = await query<AuthUser>(
-    `SELECT id, family_id AS "familyId", role, username, display_name AS "displayName"
-     FROM mp_users WHERE id = $1`,
+    `SELECT u.id, u.family_id AS "familyId", f.name AS "familyName",
+            u.role, u.username, u.display_name AS "displayName"
+     FROM mp_users u JOIN mp_families f ON f.id = u.family_id
+     WHERE u.id = $1`,
     [userId],
   );
   return rows[0] ?? null;
@@ -165,7 +168,13 @@ function validCredentials(username: string, password: string): string | null {
 }
 
 function publicUser(u: AuthUser) {
-  return { id: u.id, role: u.role, displayName: u.displayName, username: u.username };
+  return {
+    id: u.id,
+    role: u.role,
+    displayName: u.displayName,
+    username: u.username,
+    familyName: u.familyName,
+  };
 }
 
 /* -------------------------------- routes -------------------------------- */
@@ -188,18 +197,19 @@ authRouter.post(
 
     const { randomUUID } = await import("node:crypto");
     const familyId = randomUUID();
-    await query(`INSERT INTO mp_families (id, name) VALUES ($1, $2)`, [
-      familyId,
-      String(familyName || "My family").trim(),
-    ]);
+    const famName = String(familyName || "My family").trim();
+    const name = String(displayName).trim();
+    await query(`INSERT INTO mp_families (id, name) VALUES ($1, $2)`, [familyId, famName]);
     const userId = randomUUID();
     await query(
       `INSERT INTO mp_users (id, family_id, role, username, password_hash, display_name)
        VALUES ($1, $2, 'parent', $3, $4, $5)`,
-      [userId, familyId, username, hashPassword(password), String(displayName).trim()],
+      [userId, familyId, username, hashPassword(password), name],
     );
     await setSession(res, userId);
-    res.status(201).json(publicUser({ id: userId, familyId, role: "parent", username, displayName: String(displayName).trim() }));
+    res.status(201).json(
+      publicUser({ id: userId, familyId, familyName: famName, role: "parent", username, displayName: name }),
+    );
   }),
 );
 
@@ -209,8 +219,10 @@ authRouter.post(
     const username = cleanUsername(req.body?.username);
     const password = String(req.body?.password ?? "");
     const rows = await query<AuthUser & { password_hash: string }>(
-      `SELECT id, family_id AS "familyId", role, username, display_name AS "displayName", password_hash
-       FROM mp_users WHERE username = $1`,
+      `SELECT u.id, u.family_id AS "familyId", f.name AS "familyName",
+              u.role, u.username, u.display_name AS "displayName", u.password_hash
+       FROM mp_users u JOIN mp_families f ON f.id = u.family_id
+       WHERE u.username = $1`,
       [username],
     );
     const u = rows[0];
@@ -233,5 +245,24 @@ authRouter.get(
     const user = await currentUser(req);
     if (!user) return void res.status(401).json({ error: "Not signed in", code: "AUTH_REQUIRED" });
     res.json(publicUser(user));
+  }),
+);
+
+// Change your own password (you must know the current one).
+authRouter.post(
+  "/auth/change-password",
+  requireAuth,
+  h(async (req, res) => {
+    const current = String(req.body?.currentPassword ?? "");
+    const next = String(req.body?.newPassword ?? "");
+    if (next.length < 4) return void res.status(400).json({ error: "New password must be at least 4 characters" });
+    const rows = await query<{ password_hash: string }>(
+      `SELECT password_hash FROM mp_users WHERE id = $1`,
+      [req.user!.id],
+    );
+    if (!rows.length || !verifyPassword(current, rows[0].password_hash))
+      return void res.status(403).json({ error: "Current password is wrong" });
+    await query(`UPDATE mp_users SET password_hash = $2 WHERE id = $1`, [req.user!.id, hashPassword(next)]);
+    res.json({ ok: true });
   }),
 );
