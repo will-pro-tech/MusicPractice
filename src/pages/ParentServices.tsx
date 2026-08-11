@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Check, GripVertical, CalendarDays, StickyNote, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Check, GripVertical, CalendarDays, StickyNote, ChevronUp, ChevronDown, X } from "lucide-react";
 import type { Service, Song } from "../types";
 import { api } from "../api";
 import { formatDate, todayISO } from "../lib";
@@ -188,8 +188,8 @@ function ServiceEditor({
       <div className="flex max-h-[92vh] w-full max-w-md flex-col rounded-t-3xl bg-neutral-50 sm:rounded-3xl">
         <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
           <h2 className="text-lg font-bold text-neutral-800">{service ? "Edit service" : "Plan Sunday"}</h2>
-          <button type="button" onClick={onClose} className="text-sm font-medium text-neutral-500">
-            Close
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-200">
+            <X size={20} />
           </button>
         </div>
 

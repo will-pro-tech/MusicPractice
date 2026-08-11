@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Check, Copy, RefreshCw, KeyRound, Pencil, Link2, UserPlus, ShieldCheck } from "lucide-react";
+import type { ReactNode } from "react";
+import { Plus, Trash2, Check, Copy, RefreshCw, KeyRound, Pencil, Link2, UserPlus } from "lucide-react";
 import type { Adult, Child, ParentInvite } from "../types";
 import { api } from "../api";
 import { COLOR_KEYS, colorOf, initials } from "../lib";
@@ -7,6 +8,11 @@ import { Button, Card, EmptyState, Label, Spinner, TextInput } from "../ui";
 
 function inviteLink(code: string) {
   return `${window.location.origin}/?invite=${code}`;
+}
+
+/** Small uppercase label used to separate sections on the Family page. */
+function SectionLabel({ children }: { children: ReactNode }) {
+  return <h2 className="px-1 pt-1 text-sm font-bold uppercase tracking-wide text-neutral-400">{children}</h2>;
 }
 
 function CopyLink({ code }: { code: string }) {
@@ -55,7 +61,7 @@ export default function ParentChildren() {
 
       <AdultsSection />
 
-      <h2 className="px-1 pt-1 text-sm font-bold uppercase tracking-wide text-neutral-400">Kids</h2>
+      <SectionLabel>Kids</SectionLabel>
 
       {children === null ? (
         <Spinner />
@@ -326,27 +332,16 @@ function AdultsSection() {
   }, []);
 
   return (
-    <Card className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 font-bold text-neutral-800">
-          <ShieldCheck size={18} className="text-teal-600" /> Adults
-        </div>
-        <button
-          type="button"
-          onClick={() => setInviting(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-200"
-        >
-          <UserPlus size={14} /> Invite adult
-        </button>
-      </div>
+    <div className="space-y-2">
+      <SectionLabel>Adults</SectionLabel>
 
       {adults === null ? (
         <Spinner />
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {adults.map((a) => (
             <div key={a.id} className="space-y-2">
-              <div className="flex items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 ring-1 ring-black/5">
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
                   {initials(a.displayName)}
                 </span>
@@ -415,7 +410,7 @@ function AdultsSection() {
         </div>
       ))}
 
-      {inviting && (
+      {inviting ? (
         <InviteAdultForm
           onCancel={() => setInviting(false)}
           onDone={() => {
@@ -423,8 +418,12 @@ function AdultsSection() {
             load();
           }}
         />
+      ) : (
+        <Button className="w-full" onClick={() => setInviting(true)}>
+          <UserPlus size={18} /> Invite adult
+        </Button>
       )}
-    </Card>
+    </div>
   );
 }
 

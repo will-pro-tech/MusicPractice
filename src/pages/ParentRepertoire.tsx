@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import type { Song } from "../types";
 import { api } from "../api";
 import { Button, EmptyState, Label, Spinner, TextArea, TextInput } from "../ui";
@@ -156,9 +156,14 @@ function SongEditor({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-neutral-50 p-4 sm:rounded-3xl">
-        <h2 className="mb-3 text-lg font-bold text-neutral-800">{song ? "Edit song" : "New song"}</h2>
-        <div className="space-y-3">
+      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-neutral-50 sm:rounded-3xl">
+        <div className="sticky top-0 flex items-center justify-between border-b border-black/5 bg-neutral-50/95 px-4 py-3 backdrop-blur">
+          <h2 className="text-lg font-bold text-neutral-800">{song ? "Edit song" : "New song"}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-200">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="space-y-3 p-4">
           <div>
             <Label>Name</Label>
             <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Great Is Thy Faithfulness" />
