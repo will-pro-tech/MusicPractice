@@ -77,24 +77,32 @@ function LoginRegister({ onAuthed }: { onAuthed: (u: User) => void }) {
         ))}
       </div>
 
-      <div className="space-y-3">
+      {/* key forces the browser to treat sign-in and sign-up as different forms */}
+      <form
+        key={mode}
+        className="space-y-3"
+        onSubmit={(e) => { e.preventDefault(); submit(); }}
+      >
         {mode === "register" && (
           <>
             <div>
               <Label>Family name</Label>
-              <TextInput value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="e.g. The Garcías" />
+              <TextInput name="organization" autoComplete="off" value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="e.g. The Garcías" />
             </div>
             <div>
               <Label>Your name</Label>
-              <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. María" />
+              <TextInput name="name" autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. María" />
             </div>
           </>
         )}
         <div>
           <Label>Username</Label>
           <TextInput
-            value={username}
+            name="username"
+            autoComplete="username"
             autoCapitalize="none"
+            spellCheck={false}
+            value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="letters, numbers, . _ -"
           />
@@ -103,14 +111,15 @@ function LoginRegister({ onAuthed }: { onAuthed: (u: User) => void }) {
           <Label>Password</Label>
           <TextInput
             type="password"
+            name="password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
             placeholder="At least 4 characters"
           />
         </div>
         {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
-        <Button className="w-full" onClick={submit} disabled={busy}>
+        <Button type="submit" className="w-full" disabled={busy}>
           {mode === "login" ? <LogIn size={18} /> : <UserPlus size={18} />}
           {busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create family"}
         </Button>
@@ -119,7 +128,7 @@ function LoginRegister({ onAuthed }: { onAuthed: (u: User) => void }) {
             ? "Are you a child? Open the invite link your parent shared."
             : "Parents create the family, then invite each child."}
         </p>
-      </div>
+      </form>
     </Frame>
   );
 }
@@ -166,27 +175,34 @@ function JoinScreen({ code, onAuthed, onBack }: { code: string; onAuthed: (u: Us
 
   return (
     <Frame title={`Hi, ${preview.childName}!`} subtitle={`Join ${preview.familyName} and create your login.`}>
-      <div className="space-y-3">
+      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div>
           <Label>Choose a username</Label>
-          <TextInput value={username} autoCapitalize="none" onChange={(e) => setUsername(e.target.value)} placeholder="e.g. sophia" />
+          <TextInput
+            name="username"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="e.g. sophia"
+          />
         </div>
         <div>
           <Label>Choose a password</Label>
           <TextInput
             type="password"
+            name="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
             placeholder="At least 4 characters"
           />
         </div>
         {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
-        <Button className="w-full" onClick={submit} disabled={busy}>
-          {busy ? "Joining…" : "Join & start"}
-        </Button>
+        <Button type="submit" className="w-full" disabled={busy}>{busy ? "Joining…" : "Join & start"}</Button>
         <Button variant="ghost" className="w-full" onClick={onBack}>Cancel</Button>
-      </div>
+      </form>
     </Frame>
   );
 }
