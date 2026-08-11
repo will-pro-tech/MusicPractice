@@ -29,7 +29,7 @@ async function main() {
     const { createServer } = await import("vite");
     const vite = await createServer({
       root: path.resolve(__dirname, ".."),
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: true },
       appType: "spa",
     });
     app.use(vite.middlewares);

@@ -1,0 +1,1 @@
+- [Replit config reverted by GitHub pulls](replit-config-reverts.md) — syncs from GitHub wipe the port-5000 workflow and Vite `allowedHosts` fix, breaking the preview; re-apply after pulls.
