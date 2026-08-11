@@ -1,10 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="112" fill="#0d9488" />
-  <g fill="#ffffff">
-    <circle cx="188" cy="360" r="46" />
-    <circle cx="360" cy="320" r="46" />
-    <rect x="222" y="150" width="24" height="216" rx="12" />
-    <rect x="394" y="110" width="24" height="216" rx="12" />
-    <path d="M222 150 L418 110 L418 158 L222 198 Z" />
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#17c3ad" />
+      <stop offset="1" stop-color="#0c8478" />
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18" />
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)" />
+  <rect width="512" height="256" rx="112" fill="url(#sheen)" />
+  <g transform="translate(76,84) scale(15)">
+    <path d="M9 18V5l12-2v13" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="6" cy="18" r="3" fill="#ffffff" />
+    <circle cx="18" cy="16" r="3" fill="#ffffff" />
   </g>
 </svg>
