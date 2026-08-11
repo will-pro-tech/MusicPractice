@@ -16,4 +16,13 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
+  // Vite runs in middleware mode inside the Express dev server. On hosts like
+  // Replit the page is served from a proxied domain, so allow any host (else
+  // Vite answers "Blocked request. This host is not allowed.") and point the
+  // HMR websocket at the public HTTPS port.
+  server: {
+    allowedHosts: true,
+    // On Replit the page is served over HTTPS (443); locally keep HMR default.
+    hmr: process.env.REPL_ID ? { clientPort: 443 } : undefined,
+  },
 });
