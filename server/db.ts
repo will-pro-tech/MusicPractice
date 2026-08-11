@@ -4,14 +4,23 @@ const { Pool } = pg;
 
 const connectionString = process.env.DATABASE_URL;
 
-const isLocal =
-  !connectionString ||
-  connectionString.includes("localhost") ||
-  connectionString.includes("127.0.0.1");
+/**
+ * Decide whether to use SSL. Replit's bundled Postgres (and local dev) advertise
+ * `sslmode=disable` and don't accept SSL, so forcing it there breaks the
+ * connection. Managed Postgres (Neon, Supabase, etc.) needs SSL — accept its
+ * certificate without verifying the chain.
+ */
+function sslOption(cs?: string): false | { rejectUnauthorized: boolean } | undefined {
+  if (!cs) return undefined;
+  if (/sslmode=disable/.test(cs) || cs.includes("localhost") || cs.includes("127.0.0.1")) {
+    return false;
+  }
+  return { rejectUnauthorized: false };
+}
 
 export const pool = new Pool({
   connectionString,
-  ssl: isLocal ? undefined : { rejectUnauthorized: false },
+  ssl: sslOption(connectionString),
 });
 
 export async function query<T = Record<string, unknown>>(
