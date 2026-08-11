@@ -85,9 +85,10 @@ function HistoryRow({
         {session.time && <p className="text-xs text-neutral-400">{formatTime(session.time)}</p>}
       </div>
       <div className="min-w-0 flex-1 space-y-0.5">
-        <Mini done={session.churchDone} icon={<Church size={12} />} text={session.churchSong || "Church song"} />
+        <Mini done={session.churchDone} accent="text-amber-600" icon={<Church size={12} />} text={session.churchSong || "Church song"} />
         <Mini
           done={session.newSongGoalMet}
+          accent="text-violet-600"
           icon={<Music4 size={12} />}
           text={session.newSong || session.newSongGoal || "New song"}
         />
@@ -98,10 +99,20 @@ function HistoryRow({
   );
 }
 
-function Mini({ done, icon, text }: { done: boolean; icon: React.ReactNode; text: string }) {
+function Mini({
+  done,
+  icon,
+  text,
+  accent,
+}: {
+  done: boolean;
+  icon: React.ReactNode;
+  text: string;
+  accent: string;
+}) {
   return (
     <div className="flex items-center gap-1.5 truncate text-sm">
-      <span className={done ? "text-teal-600" : "text-neutral-300"}>{icon}</span>
+      <span className={cn("shrink-0", accent)}>{icon}</span>
       <span className={cn("truncate", done ? "text-neutral-700" : "text-neutral-400")}>{text}</span>
     </div>
   );
